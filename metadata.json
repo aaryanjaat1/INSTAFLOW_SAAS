@@ -1,0 +1,8 @@
+{
+  "name": "InstaFlow AI - Instagram DM Automation SaaS",
+  "description": "A premium Instagram automation platform utilizing official APIs and n8n to provide human-like AI responses for DMs, comments, and story replies.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
