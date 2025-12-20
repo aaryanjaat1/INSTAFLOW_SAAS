@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   MessageSquare, 
@@ -10,40 +10,67 @@ import {
   ExternalLink,
   Zap,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Loader2
 } from 'lucide-react';
 import { AutomationRule } from '../types';
+import { supabase } from '../services/supabase';
 
-const Automations: React.FC = () => {
-  const [rules, setRules] = useState<AutomationRule[]>([
-    {
-      id: '1',
-      title: 'Course Promo - Comment to DM',
-      type: 'comment_to_dm',
-      status: true,
-      trigger: 'Keywords: course, ai, info',
-      webhookUrl: 'https://n8n.your-domain.com/webhook/instaflow-course'
-    },
-    {
-      id: '2',
-      title: 'Support - Keyword Trigger',
-      type: 'keyword',
-      status: false,
-      trigger: 'Keyword: help',
-      webhookUrl: 'https://n8n.your-domain.com/webhook/instaflow-support'
-    },
-    {
-      id: '3',
-      title: 'Daily Reel - Story Reply',
-      type: 'story_reply',
-      status: true,
-      trigger: 'All Story Replies',
-      webhookUrl: 'https://n8n.your-domain.com/webhook/instaflow-story'
+interface AutomationsProps {
+  session: any;
+  onAuthRequired: () => void;
+}
+
+const Automations: React.FC<AutomationsProps> = ({ session, onAuthRequired }) => {
+  const [rules, setRules] = useState<AutomationRule[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (session) {
+      fetchRules();
+    } else {
+      setRules([
+        { id: '1', title: 'Demo Rule', type: 'comment_to_dm', status: true, trigger: 'Keywords: demo', webhookUrl: '#' }
+      ]);
     }
-  ]);
+  }, [session]);
 
-  const toggleStatus = (id: string) => {
-    setRules(rules.map(r => r.id === id ? { ...r, status: !r.status } : r));
+  const fetchRules = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('automation_rules')
+      .select('*')
+      .eq('user_id', session.user.id);
+    
+    if (!error && data) setRules(data);
+    setLoading(false);
+  };
+
+  const toggleStatus = async (id: string) => {
+    if (!session) return onAuthRequired();
+    
+    const rule = rules.find(r => r.id === id);
+    if (!rule) return;
+
+    const { error } = await supabase
+      .from('automation_rules')
+      .update({ status: !rule.status })
+      .eq('id', id);
+    
+    if (!error) {
+      setRules(rules.map(r => r.id === id ? { ...r, status: !r.status } : r));
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!session) return onAuthRequired();
+    
+    const { error } = await supabase
+      .from('automation_rules')
+      .delete()
+      .eq('id', id);
+    
+    if (!error) fetchRules();
   };
 
   const getTypeIcon = (type: AutomationRule['type']) => {
@@ -61,64 +88,79 @@ const Automations: React.FC = () => {
           <h1 className="text-3xl font-bold mb-2">Automation Rules</h1>
           <p className="text-slate-400 text-sm">Configure how InstaFlow responds to your followers.</p>
         </div>
-        <button className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3 rounded-2xl flex items-center gap-2 font-bold hover:shadow-lg hover:shadow-blue-500/20 transition-all">
+        <button 
+          onClick={() => !session ? onAuthRequired() : null}
+          className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3 rounded-2xl flex items-center gap-2 font-bold hover:shadow-lg hover:shadow-blue-500/20 transition-all"
+        >
           <Plus className="w-5 h-5" />
           Create Rule
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {rules.map(rule => (
-          <div key={rule.id} className="glass rounded-3xl p-6 group">
-            <div className="flex items-start justify-between mb-6">
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                rule.status ? 'bg-blue-500/10 text-blue-400' : 'bg-slate-800 text-slate-500'
-              }`}>
-                {getTypeIcon(rule.type)}
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {rules.map(rule => (
+            <div key={rule.id} className="glass rounded-3xl p-6 group">
+              <div className="flex items-start justify-between mb-6">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                  rule.status ? 'bg-blue-500/10 text-blue-400' : 'bg-slate-800 text-slate-500'
+                }`}>
+                  {getTypeIcon(rule.type)}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => toggleStatus(rule.id)}
+                    className={`w-12 h-6 rounded-full transition-colors relative ${rule.status ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${rule.status ? 'left-7' : 'left-1'}`}></div>
+                  </button>
+                  <button className="p-2 hover:bg-white/5 rounded-lg text-slate-400"><MoreHorizontal className="w-5 h-5" /></button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => toggleStatus(rule.id)}
-                  className={`w-12 h-6 rounded-full transition-colors relative ${rule.status ? 'bg-emerald-500' : 'bg-slate-700'}`}
-                >
-                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${rule.status ? 'left-7' : 'left-1'}`}></div>
+
+              <h3 className="font-bold text-lg mb-1">{rule.title}</h3>
+              <p className="text-xs text-slate-400 mb-4">{rule.type.replace(/_/g, ' ').toUpperCase()}</p>
+
+              <div className="space-y-3 mb-6">
+                <div className="flex items-center gap-2 text-sm">
+                  <Zap className="w-4 h-4 text-amber-400" />
+                  <span className="text-slate-300">{rule.trigger}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <ExternalLink className="w-4 h-4 text-slate-500" />
+                  <span className="text-slate-500 truncate max-w-[200px]">{rule.webhookUrl}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button className="flex-1 bg-slate-800/50 py-2 rounded-xl text-xs font-bold hover:bg-slate-700 transition-colors">
+                  Edit Flow
                 </button>
-                <button className="p-2 hover:bg-white/5 rounded-lg text-slate-400"><MoreHorizontal className="w-5 h-5" /></button>
+                <button 
+                  onClick={() => handleDelete(rule.id)}
+                  className="p-2 bg-rose-500/10 text-rose-500 rounded-xl hover:bg-rose-500/20 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             </div>
+          ))}
 
-            <h3 className="font-bold text-lg mb-1">{rule.title}</h3>
-            <p className="text-xs text-slate-400 mb-4">{rule.type.replace(/_/g, ' ').toUpperCase()}</p>
-
-            <div className="space-y-3 mb-6">
-              <div className="flex items-center gap-2 text-sm">
-                <Zap className="w-4 h-4 text-amber-400" />
-                <span className="text-slate-300">{rule.trigger}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <ExternalLink className="w-4 h-4 text-slate-500" />
-                <span className="text-slate-500 truncate max-w-[200px]">{rule.webhookUrl}</span>
-              </div>
+          <button 
+            onClick={() => !session ? onAuthRequired() : null}
+            className="border-2 border-dashed border-white/10 rounded-3xl p-6 flex flex-col items-center justify-center gap-4 hover:border-blue-500/50 hover:bg-white/5 transition-all text-slate-500 hover:text-blue-400"
+          >
+            <div className="w-12 h-12 rounded-full bg-slate-800/50 flex items-center justify-center">
+              <Plus className="w-6 h-6" />
             </div>
-
-            <div className="flex gap-2">
-              <button className="flex-1 bg-slate-800/50 py-2 rounded-xl text-xs font-bold hover:bg-slate-700 transition-colors">
-                Edit Flow
-              </button>
-              <button className="p-2 bg-rose-500/10 text-rose-500 rounded-xl hover:bg-rose-500/20 transition-colors">
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        ))}
-
-        <button className="border-2 border-dashed border-white/10 rounded-3xl p-6 flex flex-col items-center justify-center gap-4 hover:border-blue-500/50 hover:bg-white/5 transition-all text-slate-500 hover:text-blue-400">
-          <div className="w-12 h-12 rounded-full bg-slate-800/50 flex items-center justify-center">
-            <Plus className="w-6 h-6" />
-          </div>
-          <span className="font-medium">Add New Rule</span>
-        </button>
-      </div>
+            <span className="font-medium">Add New Rule</span>
+          </button>
+        </div>
+      )}
 
       <div className="glass rounded-3xl p-8 mt-12">
         <div className="flex items-start gap-4">

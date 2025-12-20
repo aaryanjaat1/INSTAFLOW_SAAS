@@ -12,7 +12,9 @@ import {
   CreditCard,
   ChevronLeft,
   ChevronRight,
-  HelpCircle
+  HelpCircle,
+  LogIn,
+  Library
 } from 'lucide-react';
 import { PageType } from '../types';
 import { UserProfile } from '../App';
@@ -21,9 +23,10 @@ interface SidebarProps {
   activePage: PageType;
   onPageChange: (page: PageType) => void;
   profile: UserProfile;
+  session: any;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activePage, onPageChange, profile }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activePage, onPageChange, profile, session }) => {
   const [collapsed, setCollapsed] = useState(false);
 
   const menuItems = [
@@ -34,6 +37,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onPageChange, profile }) 
     { id: 'accounts' as PageType, icon: Instagram, label: 'Instagram Accounts' },
     { id: 'analytics' as PageType, icon: BarChart3, label: 'Analytics' },
     { id: 'webhooks' as PageType, icon: Webhook, label: 'Webhooks / n8n' },
+    { id: 'workflow-library' as PageType, icon: Library, label: 'Workflow Library' },
     { id: 'settings' as PageType, icon: Settings, label: 'Settings' },
     { id: 'billing' as PageType, icon: CreditCard, label: 'Billing' },
     { id: 'help' as PageType, icon: HelpCircle, label: 'Help Center' },
@@ -80,29 +84,38 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onPageChange, profile }) 
       </nav>
 
       <div className="p-4 border-t border-white/10">
-        {!collapsed && (
+        {!session ? (
           <button 
             onClick={() => onPageChange('profile')}
-            className={`w-full bg-white/5 hover:bg-white/10 rounded-2xl p-4 mb-4 border transition-all text-left group ${activePage === 'profile' ? 'border-purple-500/50 bg-white/10' : 'border-white/5'}`}
+            className="w-full bg-blue-600 hover:bg-blue-500 rounded-2xl p-4 mb-4 font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 transition-all active:scale-95"
           >
-            <div className="flex items-center gap-3 mb-3">
-              <img src={profile.avatar} alt="Profile" className="w-10 h-10 rounded-full border-2 border-purple-500/30 group-hover:border-purple-500 transition-colors object-cover" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold truncate text-slate-100">{profile.name}</p>
-                <p className="text-xs text-slate-400 font-medium">{profile.plan}</p>
-              </div>
-            </div>
-            <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-              <div className="bg-gradient-to-r from-purple-500 to-blue-500 h-1.5 rounded-full w-3/4 transition-all duration-1000"></div>
-            </div>
-            <div className="flex items-center justify-between mt-2">
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">750/1000 messages</p>
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-            </div>
+            {!collapsed ? <><LogIn className="w-4 h-4" /> Sign In</> : <LogIn className="w-5 h-5" />}
           </button>
+        ) : (
+          !collapsed && (
+            <button 
+              onClick={() => onPageChange('profile')}
+              className={`w-full bg-white/5 hover:bg-white/10 rounded-2xl p-4 mb-4 border transition-all text-left group ${activePage === 'profile' ? 'border-purple-500/50 bg-white/10' : 'border-white/5'}`}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <img src={profile.avatar} alt="Profile" className="w-10 h-10 rounded-full border-2 border-purple-500/30 group-hover:border-purple-500 transition-colors object-cover" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold truncate text-slate-100">{profile.name}</p>
+                  <p className="text-xs text-slate-400 font-medium">{profile.plan}</p>
+                </div>
+              </div>
+              <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                <div className="bg-gradient-to-r from-purple-500 to-blue-500 h-1.5 rounded-full w-3/4 transition-all duration-1000"></div>
+              </div>
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">750/1000 messages</p>
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+              </div>
+            </button>
+          )
         )}
         
-        {collapsed && (
+        {session && collapsed && (
           <button 
             onClick={() => onPageChange('profile')}
             className="w-10 h-10 mx-auto rounded-full border-2 border-purple-500/30 hover:border-purple-500 transition-all mb-4 overflow-hidden block"

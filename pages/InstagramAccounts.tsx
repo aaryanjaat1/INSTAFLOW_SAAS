@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Instagram, 
   Facebook, 
@@ -22,8 +22,10 @@ import {
   Settings as SettingsIcon,
   Zap,
   Key,
-  Database
+  Database,
+  Loader2
 } from 'lucide-react';
+import { supabase } from '../services/supabase';
 
 interface IGAccount {
   id: string;
@@ -34,51 +36,87 @@ interface IGAccount {
   lastSynced: string;
 }
 
-const InstagramAccounts: React.FC = () => {
+interface InstagramAccountsProps {
+  session: any;
+  onAuthRequired: () => void;
+}
+
+const InstagramAccounts: React.FC<InstagramAccountsProps> = ({ session, onAuthRequired }) => {
   const [step, setStep] = useState<'initial' | 'oauth' | 'select' | 'ready'>('ready');
   const [selectedAccount, setSelectedAccount] = useState<IGAccount | null>(null);
-  const [accounts, setAccounts] = useState<IGAccount[]>([
-    {
-      id: '1',
-      username: 'the_ai_revolution',
-      followers: '12.4k',
-      avatar: 'https://picsum.photos/100/100?random=50',
-      status: 'active',
-      lastSynced: '2 mins ago'
-    },
-    {
-      id: '4',
-      username: 'expired_brand_account',
-      followers: '1.2k',
-      avatar: 'https://picsum.photos/100/100?random=55',
-      status: 'expired',
-      lastSynced: '14 days ago'
-    }
-  ]);
+  const [loading, setLoading] = useState(false);
+  const [accounts, setAccounts] = useState<IGAccount[]>([]);
 
-  const [discoveredAccounts] = useState<IGAccount[]>([
-    { id: '2', username: 'tech_insights_daily', followers: '5.2k', avatar: 'https://picsum.photos/100/100?random=51', status: 'pending', lastSynced: 'Never' },
-    { id: '3', username: 'creative_studio_ig', followers: '48.9k', avatar: 'https://picsum.photos/100/100?random=52', status: 'pending', lastSynced: 'Never' }
-  ]);
+  useEffect(() => {
+    if (session) {
+      fetchAccounts();
+    } else {
+      setStep('initial');
+      setAccounts([
+        { id: '1', username: 'demo_user', followers: '5.2k', avatar: 'https://picsum.photos/100/100?random=50', status: 'active', lastSynced: 'Just now' }
+      ]);
+    }
+  }, [session]);
+
+  const fetchAccounts = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('instagram_accounts')
+      .select('*')
+      .eq('user_id', session.user.id);
+    
+    if (!error && data) {
+      setAccounts(data);
+      if (data.length === 0) setStep('initial');
+    }
+    setLoading(false);
+  };
 
   const handleStartOAuth = () => {
+    if (!session) return onAuthRequired();
     setStep('oauth');
+    // Simulated Meta OAuth Flow
     setTimeout(() => {
       setStep('select');
     }, 1500);
   };
 
-  const handleSelectAccount = (account: IGAccount) => {
-    setAccounts([...accounts, { ...account, status: 'active', lastSynced: 'Just now' }]);
-    setStep('ready');
+  const handleSelectAccount = async (account: IGAccount) => {
+    setLoading(true);
+    const newAccount = {
+      ...account,
+      user_id: session.user.id,
+      status: 'active',
+      lastSynced: 'Just now'
+    };
+    
+    const { error } = await supabase.from('instagram_accounts').upsert([newAccount]);
+    if (!error) {
+      fetchAccounts();
+      setStep('ready');
+    }
+    setLoading(false);
   };
 
-  const handleDisconnect = (id: string, e: React.MouseEvent) => {
+  const handleDisconnect = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setAccounts(accounts.filter(a => a.id !== id));
-    if (accounts.length === 1) setStep('initial');
-    setSelectedAccount(null);
+    if (!session) return onAuthRequired();
+    
+    const { error } = await supabase
+      .from('instagram_accounts')
+      .delete()
+      .eq('id', id);
+    
+    if (!error) {
+      fetchAccounts();
+      setSelectedAccount(null);
+    }
   };
+
+  const [discoveredAccounts] = useState<IGAccount[]>([
+    { id: '2', username: 'tech_insights_daily', followers: '5.2k', avatar: 'https://picsum.photos/100/100?random=51', status: 'pending', lastSynced: 'Never' },
+    { id: '3', username: 'creative_studio_ig', followers: '48.9k', avatar: 'https://picsum.photos/100/100?random=52', status: 'pending', lastSynced: 'Never' }
+  ]);
 
   const StatusBadge = ({ status, showPulse = true }: { status: IGAccount['status'], showPulse?: boolean }) => {
     switch (status) {
@@ -204,10 +242,14 @@ const InstagramAccounts: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                     <StatusBadge status="pending" showPulse={false} />
-                     <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400 group-hover:bg-blue-500 group-hover:text-white transition-all shadow-lg">
-                       <Plus className="w-6 h-6" />
-                     </div>
+                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                       <>
+                        <StatusBadge status="pending" showPulse={false} />
+                        <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400 group-hover:bg-blue-500 group-hover:text-white transition-all shadow-lg">
+                          <Plus className="w-6 h-6" />
+                        </div>
+                       </>
+                     )}
                   </div>
                 </div>
               ))}

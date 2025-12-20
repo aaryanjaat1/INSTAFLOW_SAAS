@@ -43,6 +43,7 @@ export type PageType =
   | 'accounts' 
   | 'analytics' 
   | 'webhooks' 
+  | 'workflow-library'
   | 'settings' 
   | 'billing'
   | 'help'

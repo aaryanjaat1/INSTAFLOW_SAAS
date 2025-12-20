@@ -28,9 +28,10 @@ import { UserProfile } from '../App';
 interface ProfileProps {
   onNavigate: (page: PageType) => void;
   profile: UserProfile;
+  onSignOut: () => void;
 }
 
-const Profile: React.FC<ProfileProps> = ({ onNavigate, profile }) => {
+const Profile: React.FC<ProfileProps> = ({ onNavigate, profile, onSignOut }) => {
   const [showApiKey, setShowApiKey] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
 
@@ -76,7 +77,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, profile }) => {
                 {profile.plan}
               </span>
             </div>
-            <p className="text-slate-400 font-medium text-lg">{profile.email} • {profile.timezone.split(' - ')[1] || 'Global'}</p>
+            <p className="text-slate-400 font-medium text-lg">{profile.email} • {profile.timezone}</p>
             
             <div className="flex flex-wrap justify-center md:justify-start gap-3 pt-2">
               <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/5 text-sm">
@@ -94,7 +95,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, profile }) => {
              <button onClick={() => onNavigate('settings')} className="w-full bg-white/10 hover:bg-white/20 py-4 rounded-[1.5rem] font-bold text-sm transition-all border border-white/5">
                 Edit Profile
              </button>
-             <button className="w-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 py-4 rounded-[1.5rem] font-bold text-sm transition-all border border-rose-500/10 flex items-center justify-center gap-2">
+             <button onClick={onSignOut} className="w-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 py-4 rounded-[1.5rem] font-bold text-sm transition-all border border-rose-500/10 flex items-center justify-center gap-2">
                 <LogOut className="w-4 h-4" /> Sign Out
              </button>
           </div>
@@ -202,7 +203,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, profile }) => {
         <div className="space-y-8">
           <section className="glass rounded-[2.5rem] p-8 border border-white/5 bg-gradient-to-br from-blue-600/5 to-transparent">
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-500">
+              <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-400">
                 <CreditCard className="w-6 h-6" />
               </div>
               <h3 className="text-xl font-bold">Plan & Billing</h3>
