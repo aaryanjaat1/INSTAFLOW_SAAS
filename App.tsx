@@ -8,6 +8,7 @@ import AIReplySettings from './pages/AIReplySettings';
 import InstagramAccounts from './pages/InstagramAccounts';
 import Analytics from './pages/Analytics';
 import Billing from './pages/Billing';
+import Help from './pages/Help';
 import { PageType } from './types';
 
 const App: React.FC = () => {
@@ -22,6 +23,7 @@ const App: React.FC = () => {
       case 'accounts': return <InstagramAccounts />;
       case 'analytics': return <Analytics />;
       case 'billing': return <Billing />;
+      case 'help': return <Help />;
       default: return <Dashboard />;
     }
   };

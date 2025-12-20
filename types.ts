@@ -44,4 +44,5 @@ export type PageType =
   | 'analytics' 
   | 'webhooks' 
   | 'settings' 
-  | 'billing';
+  | 'billing'
+  | 'help';

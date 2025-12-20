@@ -12,7 +12,7 @@ import {
   CreditCard,
   ChevronLeft,
   ChevronRight,
-  LogOut
+  HelpCircle
 } from 'lucide-react';
 import { PageType } from '../types';
 
@@ -34,6 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onPageChange }) => {
     { id: 'webhooks' as PageType, icon: Webhook, label: 'Webhooks / n8n' },
     { id: 'settings' as PageType, icon: Settings, label: 'Settings' },
     { id: 'billing' as PageType, icon: CreditCard, label: 'Billing' },
+    { id: 'help' as PageType, icon: HelpCircle, label: 'Help Center' },
   ];
 
   return (
