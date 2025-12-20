@@ -30,7 +30,21 @@ const plans = [
   }
 ];
 
-const Billing: React.FC = () => {
+interface BillingProps {
+  session: any;
+  onAuthRequired: () => void;
+  onActionInProgress: () => void;
+}
+
+const Billing: React.FC<BillingProps> = ({ session, onAuthRequired, onActionInProgress }) => {
+  const handlePlanSelection = (planName: string) => {
+    if (!session) {
+      onAuthRequired();
+    } else {
+      onActionInProgress();
+    }
+  };
+
   return (
     <div className="space-y-12 animate-fade-in max-w-6xl mx-auto">
       <div className="text-center">
@@ -79,11 +93,14 @@ const Billing: React.FC = () => {
               ))}
             </ul>
 
-            <button className={`w-full py-4 rounded-2xl font-bold transition-all ${
-              plan.popular 
-              ? 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-500/20' 
-              : 'bg-slate-800 text-white hover:bg-slate-700'
-            }`}>
+            <button 
+              onClick={() => handlePlanSelection(plan.name)}
+              className={`w-full py-4 rounded-2xl font-bold transition-all ${
+                plan.popular 
+                ? 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20' 
+                : 'bg-slate-800 text-white hover:bg-slate-700'
+              }`}
+            >
               Choose {plan.name}
             </button>
           </div>

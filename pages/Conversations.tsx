@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Search, Send, Sparkles, User, Info, MoreVertical, Paperclip, Smile, MessageSquare } from 'lucide-react';
+import { Search, Send, Sparkles, User, Info, MoreVertical, Paperclip, Smile, MessageSquare, ChevronLeft } from 'lucide-react';
 import { Conversation, Message } from '../types';
 
 const mockConversations: Conversation[] = [
@@ -37,23 +37,56 @@ const mockConversations: Conversation[] = [
   },
 ];
 
-const Conversations: React.FC = () => {
-  const [activeChat, setActiveChat] = useState<Conversation>(mockConversations[0]);
+interface ConversationsProps {
+  onActionInProgress: () => void;
+}
+
+const Conversations: React.FC<ConversationsProps> = ({ onActionInProgress }) => {
+  const [activeChat, setActiveChat] = useState<Conversation | null>(mockConversations[0]);
+  const [showChatOnMobile, setShowChatOnMobile] = useState(false);
   const [inputText, setInputText] = useState('');
-  const [aiSuggestion, setAiSuggestion] = useState('Sure! Our AI course starts at $197. It covers everything from prompt engineering to full automation workflows. Would you like a checkout link?');
+  const [aiSuggestion] = useState('Sure! Our AI course starts at $197. It covers everything from prompt engineering to full automation workflows. Would you like a checkout link?');
+
+  const handleSend = () => {
+    if (!inputText.trim() || !activeChat) return;
+    const newMessage: Message = {
+      id: Date.now().toString(),
+      sender: 'Me',
+      avatar: 'https://picsum.photos/160/160?random=1',
+      content: inputText,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      isAI: false,
+      status: 'sent'
+    };
+    setActiveChat({
+      ...activeChat,
+      messages: [...activeChat.messages, newMessage]
+    });
+    setInputText('');
+  };
+
+  const handleApplyAiSuggestion = () => {
+    setInputText(aiSuggestion);
+  };
+
+  const handleSelectChat = (chat: Conversation) => {
+    setActiveChat(chat);
+    setShowChatOnMobile(true);
+  };
 
   return (
-    <div className="h-[calc(100vh-120px)] flex gap-6 animate-fade-in">
-      {/* Sidebar - Conversations List */}
-      <div className="w-80 glass rounded-3xl overflow-hidden flex flex-col">
+    <div className="h-[calc(100vh-160px)] lg:h-[calc(100vh-120px)] flex gap-6 animate-fade-in relative overflow-hidden">
+      {/* Sidebar - Conversations List (Responsive Toggle) */}
+      <div className={`w-full lg:w-96 glass rounded-3xl overflow-hidden flex flex-col shrink-0 transition-all duration-300 ${showChatOnMobile ? 'hidden lg:flex' : 'flex'}`}>
         <div className="p-6 border-b border-white/5">
-          <h2 className="text-xl font-bold mb-4">Messages</h2>
+          <h2 className="text-xl font-bold mb-4">Inbox</h2>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
             <input 
               type="text" 
-              placeholder="Search chats..." 
-              className="w-full bg-slate-800/50 border-none rounded-xl py-2 pl-10 pr-4 text-sm focus:ring-1 focus:ring-blue-500"
+              placeholder="Search conversations..." 
+              onChange={onActionInProgress}
+              className="w-full bg-slate-800/50 border border-white/5 rounded-2xl py-2.5 pl-10 pr-4 text-sm focus:ring-1 focus:ring-blue-500 outline-none transition-all"
             />
           </div>
         </div>
@@ -61,139 +94,172 @@ const Conversations: React.FC = () => {
           {mockConversations.map(chat => (
             <button
               key={chat.id}
-              onClick={() => setActiveChat(chat)}
-              className={`w-full p-4 flex gap-3 transition-colors ${activeChat?.id === chat.id ? 'bg-white/10' : 'hover:bg-white/5'}`}
+              onClick={() => handleSelectChat(chat)}
+              className={`w-full p-4 flex gap-4 transition-all duration-200 border-l-4 ${activeChat?.id === chat.id ? 'bg-white/10 border-blue-500' : 'hover:bg-white/5 border-transparent'}`}
             >
-              <div className="relative">
-                <img src={chat.avatar} alt={chat.username} className="w-12 h-12 rounded-full" />
+              <div className="relative shrink-0">
+                <img src={chat.avatar} alt={chat.username} className="w-12 h-12 rounded-full object-cover border border-white/10 shadow-lg" />
                 {chat.unread > 0 && (
-                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-[#0f172a]">
+                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-[10px] font-black border-2 border-slate-900 shadow-xl">
                     {chat.unread}
                   </div>
                 )}
               </div>
-              <div className="flex-1 text-left">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="font-semibold text-sm truncate max-w-[100px]">{chat.username}</span>
-                  <span className="text-[10px] text-slate-500">{chat.timestamp}</span>
+              <div className="flex-1 text-left min-w-0">
+                <div className="flex justify-between items-center mb-1 gap-2">
+                  <span className="font-bold text-sm truncate text-white">@{chat.username}</span>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter whitespace-nowrap">{chat.timestamp}</span>
                 </div>
-                <p className="text-xs text-slate-400 truncate">{chat.lastMessage}</p>
+                <p className={`text-xs truncate ${chat.unread > 0 ? 'text-slate-200 font-semibold' : 'text-slate-500'}`}>{chat.lastMessage}</p>
               </div>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Main Chat Area */}
-      <div className="flex-1 glass rounded-3xl overflow-hidden flex flex-col">
+      {/* Main Chat Area (Responsive Toggle) */}
+      <div className={`flex-1 glass rounded-3xl overflow-hidden flex flex-col transition-all duration-300 ${showChatOnMobile ? 'flex' : 'hidden lg:flex'}`}>
         {activeChat ? (
           <>
-            <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between bg-slate-900/40">
               <div className="flex items-center gap-3">
-                <img src={activeChat.avatar} alt={activeChat.username} className="w-10 h-10 rounded-full" />
-                <div>
-                  <h3 className="font-bold">{activeChat.username}</h3>
-                  <p className="text-xs text-emerald-400">Online</p>
+                <button onClick={() => setShowChatOnMobile(false)} className="lg:hidden p-2 -ml-2 hover:bg-white/10 rounded-xl text-slate-400">
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+                <div className="relative">
+                  <img src={activeChat.avatar} alt={activeChat.username} className="w-10 h-10 rounded-full object-cover border border-white/10" />
+                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-slate-900 shadow-xl"></div>
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-bold text-sm lg:text-base truncate">@{activeChat.username}</h3>
+                  <p className="text-[10px] lg:text-xs font-black uppercase text-emerald-400 tracking-widest">Active Insight</p>
                 </div>
               </div>
-              <div className="flex items-center gap-4 text-slate-400">
-                <button className="p-2 hover:bg-white/5 rounded-lg"><Info className="w-5 h-5" /></button>
-                <button className="p-2 hover:bg-white/5 rounded-lg"><MoreVertical className="w-5 h-5" /></button>
+              <div className="flex items-center gap-1 text-slate-400">
+                <button onClick={onActionInProgress} className="p-2.5 hover:bg-white/10 rounded-xl transition-all"><Info className="w-5 h-5" /></button>
+                <button onClick={onActionInProgress} className="p-2.5 hover:bg-white/10 rounded-xl transition-all"><MoreVertical className="w-5 h-5" /></button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar bg-slate-900/20">
-              {activeChat.messages.map(msg => (
-                <div key={msg.id} className={`flex ${msg.isAI || msg.sender === 'System' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[70%] rounded-2xl p-4 text-sm ${
-                    msg.isAI 
-                    ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white' 
-                    : 'bg-slate-800 text-slate-200'
+            <div className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-6 custom-scrollbar bg-slate-950/20">
+              {activeChat.messages.length > 0 ? activeChat.messages.map(msg => (
+                <div key={msg.id} className={`flex flex-col ${msg.isAI || msg.sender === 'Me' ? 'items-end' : 'items-start'}`}>
+                  <div className={`max-w-[85%] lg:max-w-[70%] rounded-[2rem] p-5 text-sm shadow-xl ${
+                    msg.isAI || msg.sender === 'Me'
+                    ? 'bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-tr-none' 
+                    : 'bg-slate-900/80 text-slate-200 border border-white/5 rounded-tl-none'
                   }`}>
-                    {msg.content}
-                    <div className={`text-[10px] mt-2 opacity-60 text-right`}>{msg.timestamp}</div>
+                    <p className="leading-relaxed">{msg.content}</p>
+                    <div className={`text-[9px] mt-2 font-black uppercase tracking-widest opacity-40 text-right`}>
+                      {msg.timestamp} {msg.isAI ? '• AI ASSISTED' : ''}
+                    </div>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="h-full flex flex-col items-center justify-center text-slate-600">
+                   <MessageSquare className="w-12 h-12 mb-4 opacity-20" />
+                   <p className="text-xs font-bold uppercase tracking-widest">No history found</p>
+                </div>
+              )}
             </div>
 
-            <div className="p-6 border-t border-white/5 bg-slate-900/40">
-              <div className="flex items-end gap-3">
-                <div className="flex-1 glass-dark rounded-2xl p-2 focus-within:ring-1 ring-blue-500 transition-all">
-                  <textarea 
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    placeholder="Type a message..."
-                    className="w-full bg-transparent border-none resize-none px-3 py-2 text-sm focus:outline-none min-h-[44px] max-h-32 custom-scrollbar"
-                  />
-                  <div className="flex items-center justify-between px-2 pb-1 border-t border-white/5 pt-2">
-                    <div className="flex gap-2">
-                      <button className="p-1.5 hover:bg-white/5 rounded-lg text-slate-400"><Paperclip className="w-4 h-4" /></button>
-                      <button className="p-1.5 hover:bg-white/5 rounded-lg text-slate-400"><Smile className="w-4 h-4" /></button>
+            <div className="p-4 lg:p-6 border-t border-white/5 bg-slate-900/60">
+              <div className="flex flex-col gap-4">
+                {/* AI Quick Response suggestion bar - desktop only */}
+                <div className="hidden lg:flex items-center justify-between bg-purple-500/10 border border-purple-500/20 p-3 rounded-2xl">
+                   <div className="flex items-center gap-3">
+                      <Sparkles className="w-4 h-4 text-purple-400" />
+                      <p className="text-xs text-slate-300 italic truncate max-w-lg">{aiSuggestion}</p>
+                   </div>
+                   <button onClick={handleApplyAiSuggestion} className="px-3 py-1 bg-purple-500 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-purple-400 transition-all">Use AI</button>
+                </div>
+
+                <div className="flex items-end gap-3">
+                  <div className="flex-1 bg-slate-950/80 border border-white/10 rounded-3xl p-2 focus-within:border-blue-500/50 transition-all">
+                    <textarea 
+                      value={inputText}
+                      onChange={(e) => setInputText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSend();
+                        }
+                      }}
+                      placeholder="Type a secure message..."
+                      className="w-full bg-transparent border-none resize-none px-4 py-3 text-sm focus:outline-none min-h-[44px] max-h-32 custom-scrollbar text-white"
+                    />
+                    <div className="flex items-center justify-between px-3 pb-2 pt-1">
+                      <div className="flex gap-2">
+                        <button onClick={onActionInProgress} className="p-2 hover:bg-white/10 rounded-xl text-slate-500 transition-all"><Paperclip className="w-4 h-4" /></button>
+                        <button onClick={onActionInProgress} className="p-2 hover:bg-white/10 rounded-xl text-slate-500 transition-all"><Smile className="w-4 h-4" /></button>
+                      </div>
+                      <button 
+                        onClick={handleSend}
+                        className="bg-blue-600 p-2.5 rounded-2xl hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/30 active:scale-90"
+                      >
+                        <Send className="w-5 h-5 text-white" />
+                      </button>
                     </div>
-                    <button className="bg-blue-600 p-2 rounded-xl hover:bg-blue-500 transition-colors shadow-lg shadow-blue-500/20">
-                      <Send className="w-4 h-4 text-white" />
-                    </button>
                   </div>
                 </div>
               </div>
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-500">
-            <MessageSquare className="w-16 h-16 mb-4 opacity-20" />
-            <p>Select a conversation to start chatting</p>
+          <div className="flex-1 flex flex-col items-center justify-center text-slate-500 p-8 text-center bg-slate-950/20">
+            <div className="w-20 h-20 rounded-[2rem] bg-slate-900 border border-white/5 flex items-center justify-center mb-6 shadow-2xl opacity-40">
+               <MessageSquare className="w-10 h-10" />
+            </div>
+            <h4 className="text-lg font-bold text-slate-400">Secure Direct Messaging</h4>
+            <p className="text-xs max-w-xs mt-2 leading-relaxed opacity-60 font-medium">Select a lead from your inbox to view conversation history and automation metrics.</p>
           </div>
         )}
       </div>
 
-      {/* Right Sidebar - AI Suggestions & Profile */}
-      <div className="w-80 space-y-6">
-        <div className="glass rounded-3xl p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Sparkles className="w-5 h-5 text-purple-400" />
-            <h3 className="font-bold">AI Suggestion</h3>
+      {/* Right Sidebar - AI Context - Hidden on Desktop/Mobile toggle-ready */}
+      <div className="w-80 space-y-6 hidden xl:block shrink-0 overflow-y-auto custom-scrollbar">
+        <div className="glass rounded-[2rem] p-6 border border-white/10">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400"><Sparkles className="w-5 h-5" /></div>
+            <h3 className="font-bold">Lead Intelligence</h3>
           </div>
-          <div className="bg-purple-500/10 border border-purple-500/20 rounded-2xl p-4 mb-4">
-            <p className="text-sm leading-relaxed text-purple-100">
-              {aiSuggestion}
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <button className="bg-purple-600/20 border border-purple-500/30 py-2 rounded-xl text-xs font-bold text-purple-300 hover:bg-purple-600/30 transition-all">
-              Copy to Input
-            </button>
-            <button className="bg-blue-600 py-2 rounded-xl text-xs font-bold text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20">
-              Send Now
-            </button>
-          </div>
-          <button className="w-full mt-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition-colors">
-            Regenerate response
-          </button>
-        </div>
-
-        <div className="glass rounded-3xl p-6">
-          <h3 className="font-bold mb-4">Lead Info</h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-400">Account Type</span>
-              <span className="bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded text-[10px] font-bold">BUSINESS</span>
+          <div className="space-y-6">
+            <div className="p-5 rounded-[1.5rem] bg-white/[0.03] border border-white/5">
+               <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-3">Suggested Strategy</p>
+               <p className="text-xs text-slate-300 leading-relaxed italic">"Lead expressed interest in course pricing. Recommend offering the limited-time discount code."</p>
             </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-400">Followers</span>
-              <span className="font-medium">12.4k</span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-400">Lead Score</span>
-              <div className="flex gap-1 text-amber-400">
-                <Sparkles className="w-3 h-3 fill-amber-400" />
-                <span className="font-bold">8.5</span>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span className="text-slate-500 uppercase tracking-widest">Lead Score</span>
+                <span className="text-emerald-400">88/100</span>
+              </div>
+              <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden">
+                 <div className="w-[88%] h-full bg-emerald-500 rounded-full"></div>
               </div>
             </div>
           </div>
-          <button className="w-full mt-6 bg-slate-800 py-3 rounded-2xl text-sm font-bold hover:bg-slate-700 transition-colors">
-            View Instagram Profile
+          <button 
+            onClick={onActionInProgress}
+            className="w-full mt-8 bg-white/5 hover:bg-white/10 py-4 rounded-2xl text-xs font-bold transition-all border border-white/5"
+          >
+            Open Meta Analytics
           </button>
+        </div>
+
+        <div className="glass rounded-[2rem] p-6 border border-white/10">
+          <h3 className="font-bold mb-6 flex items-center gap-2">Account Metadata</h3>
+          <div className="space-y-5">
+            {[
+              { label: 'Followers', value: '12.4k' },
+              { label: 'Follows You', value: 'Yes', color: 'text-emerald-400' },
+              { label: 'Story Engagement', value: 'High' }
+            ].map((meta, i) => (
+              <div key={i} className="flex justify-between items-center text-xs font-bold">
+                <span className="text-slate-500 uppercase tracking-widest">{meta.label}</span>
+                <span className={meta.color || 'text-slate-100'}>{meta.value}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

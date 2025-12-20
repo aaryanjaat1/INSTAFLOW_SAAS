@@ -62,6 +62,7 @@ const faqs = [
   }
 ];
 
+// Updated model to 'gemini-3-flash-preview' per guidelines
 const n8nTemplateJSON = `{
   "nodes": [
     {
@@ -77,7 +78,7 @@ const n8nTemplateJSON = `{
     },
     {
       "parameters": {
-        "model": "gemini-1.5-flash",
+        "model": "gemini-3-flash-preview",
         "prompt": "={{$json.body.message}}",
         "systemInstruction": "You are a helpful assistant..."
       },
@@ -94,7 +95,11 @@ const n8nTemplateJSON = `{
   }
 }`;
 
-const Help: React.FC = () => {
+interface HelpProps {
+  onActionInProgress: () => void;
+}
+
+const Help: React.FC<HelpProps> = ({ onActionInProgress }) => {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [copied, setCopied] = useState(false);
@@ -127,6 +132,7 @@ const Help: React.FC = () => {
                 type="text" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && onActionInProgress()}
                 placeholder="Search articles, FAQs, and documentation..." 
                 className="w-full bg-slate-900/80 border-2 border-white/10 group-focus-within:border-blue-500/50 rounded-[2rem] py-6 pl-16 pr-8 text-lg font-medium shadow-2xl focus:outline-none transition-all placeholder:text-slate-600"
               />
@@ -141,7 +147,7 @@ const Help: React.FC = () => {
             {popularSearches.map(term => (
               <button 
                 key={term}
-                onClick={() => setSearchQuery(term)}
+                onClick={() => { setSearchQuery(term); onActionInProgress(); }}
                 className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 hover:border-blue-500/30 hover:bg-white/10 text-xs font-semibold text-slate-300 transition-all"
               >
                 {term}
@@ -154,7 +160,7 @@ const Help: React.FC = () => {
       {/* Main Categories */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {categories.map((cat, i) => (
-          <div key={i} className="glass rounded-3xl p-8 hover:glow-purple transition-all duration-300 cursor-pointer group border border-white/5 hover:border-white/10">
+          <div key={i} onClick={onActionInProgress} className="glass rounded-3xl p-8 hover:glow-purple transition-all duration-300 cursor-pointer group border border-white/5 hover:border-white/10">
             <div className={`w-14 h-14 rounded-2xl ${cat.bg} ${cat.color} flex items-center justify-center mb-6 transition-transform group-hover:scale-110 border border-white/5`}>
               <cat.icon className="w-7 h-7" />
             </div>
@@ -263,7 +269,7 @@ const Help: React.FC = () => {
         <div>
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-2xl font-bold">Frequently Asked Questions</h2>
-            <button className="text-sm text-blue-400 font-bold hover:underline">See all FAQs</button>
+            <button onClick={onActionInProgress} className="text-sm text-blue-400 font-bold hover:underline">See all FAQs</button>
           </div>
           <div className="space-y-4">
             {faqs.map((faq, i) => (
@@ -289,10 +295,10 @@ const Help: React.FC = () => {
         <div className="space-y-8">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold">Video Tutorials</h2>
-            <button className="text-sm text-blue-400 font-bold hover:underline">Browse Video Library</button>
+            <button onClick={onActionInProgress} className="text-sm text-blue-400 font-bold hover:underline">Browse Video Library</button>
           </div>
           <div className="space-y-4">
-            <div className="glass rounded-3xl p-4 flex gap-4 group cursor-pointer hover:bg-white/5 transition-colors border border-white/5 hover:border-white/10">
+            <div onClick={onActionInProgress} className="glass rounded-3xl p-4 flex gap-4 group cursor-pointer hover:bg-white/5 transition-colors border border-white/5 hover:border-white/10">
               <div className="w-32 h-24 bg-slate-800 rounded-2xl relative overflow-hidden shrink-0 border border-white/10">
                 <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors">
                   <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -310,7 +316,7 @@ const Help: React.FC = () => {
               </div>
             </div>
 
-            <div className="glass rounded-3xl p-4 flex gap-4 group cursor-pointer hover:bg-white/5 transition-colors border border-white/5 hover:border-white/10">
+            <div onClick={onActionInProgress} className="glass rounded-3xl p-4 flex gap-4 group cursor-pointer hover:bg-white/5 transition-colors border border-white/5 hover:border-white/10">
               <div className="w-32 h-24 bg-slate-800 rounded-2xl relative overflow-hidden shrink-0 border border-white/10">
                 <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors">
                   <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -340,10 +346,10 @@ const Help: React.FC = () => {
               Our support team is available 24/7 for Pro and Enterprise members. Open a ticket or start a live chat.
             </p>
             <div className="flex flex-wrap gap-4">
-              <button className="bg-blue-600 px-6 py-3 rounded-2xl font-bold hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 active:scale-95">
+              <button onClick={onActionInProgress} className="bg-blue-600 px-6 py-3 rounded-2xl font-bold hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 active:scale-95">
                 Contact Support
               </button>
-              <button className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors font-medium">
+              <button onClick={onActionInProgress} className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors font-medium">
                 Full Documentation <ExternalLink className="w-4 h-4" />
               </button>
             </div>

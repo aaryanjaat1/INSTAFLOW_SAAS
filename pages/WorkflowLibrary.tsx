@@ -102,7 +102,13 @@ const templates: WorkflowTemplate[] = [
   }
 ];
 
-const WorkflowLibrary: React.FC<{ session: any; onAuthRequired: () => void }> = ({ session, onAuthRequired }) => {
+interface WorkflowLibraryProps {
+  session: any;
+  onAuthRequired: () => void;
+  onActionInProgress: () => void;
+}
+
+const WorkflowLibrary: React.FC<WorkflowLibraryProps> = ({ session, onAuthRequired, onActionInProgress }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedTemplate, setSelectedTemplate] = useState<WorkflowTemplate | null>(null);
@@ -329,7 +335,7 @@ const WorkflowLibrary: React.FC<{ session: any; onAuthRequired: () => void }> = 
                   <div>
                     <h5 className="text-xs font-black text-blue-400 uppercase tracking-widest mb-1">AI Recommendation</h5>
                     <p className="text-[11px] text-slate-500 leading-relaxed">
-                      We recommend pairing this with <strong>Gemini-1.5-Flash</strong> for low-latency responses and cost-efficiency.
+                      We recommend pairing this with <strong>Gemini 3 Flash</strong> for low-latency responses and cost-efficiency.
                     </p>
                   </div>
                 </div>
@@ -351,7 +357,10 @@ const WorkflowLibrary: React.FC<{ session: any; onAuthRequired: () => void }> = 
                 Our engineering team can build bespoke n8n automations for your specific business logic. Available exclusively for Enterprise members.
               </p>
            </div>
-           <button className="bg-white text-slate-950 px-10 py-4 rounded-[1.5rem] font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95 shadow-2xl">
+           <button 
+            onClick={onActionInProgress}
+            className="bg-white text-slate-950 px-10 py-4 rounded-[1.5rem] font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95 shadow-2xl"
+           >
               Talk to an Expert
            </button>
         </div>

@@ -16,6 +16,23 @@ export const signInWithGoogle = async () => {
   });
 };
 
+export const signInWithFacebook = async () => {
+  return await supabase.auth.signInWithOAuth({
+    provider: 'facebook',
+    options: {
+      // Official Meta Graph API scopes for Instagram Business Management
+      // pages_show_list: View list of pages user manages
+      // instagram_basic: Basic account info
+      // instagram_manage_messages: Direct Message automation
+      // pages_read_engagement: Read comments/engagement
+      // instagram_manage_comments: Reply to and manage comments
+      // public_profile: Basic FB user info
+      scopes: 'pages_show_list,instagram_basic,instagram_manage_messages,pages_read_engagement,instagram_manage_comments,public_profile',
+      redirectTo: `${window.location.origin}/#accounts`
+    }
+  });
+};
+
 export const signOut = async () => {
   return await supabase.auth.signOut();
 };
