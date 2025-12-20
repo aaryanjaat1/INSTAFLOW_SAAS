@@ -45,4 +45,5 @@ export type PageType =
   | 'webhooks' 
   | 'settings' 
   | 'billing'
-  | 'help';
+  | 'help'
+  | 'profile';
