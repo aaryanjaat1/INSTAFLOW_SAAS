@@ -13,12 +13,13 @@ import {
   ChevronLeft,
   ChevronRight,
   HelpCircle,
-  LogIn,
   Library,
   Menu,
   X,
   User,
-  LogOut
+  LogOut,
+  ShieldCheck,
+  LogIn
 } from 'lucide-react';
 import { PageType } from '../types';
 import { UserProfile } from '../App';
@@ -38,12 +39,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onPageChange, onAuthRequi
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
-  // Scroll visibility logic for mobile top nav
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      
-      // Show when scrolling up, hide when scrolling down (with 80px buffer)
       if (currentScrollY > lastScrollY && currentScrollY > 80) {
         setIsVisible(false);
       } else {
@@ -80,7 +78,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onPageChange, onAuthRequi
 
   return (
     <>
-      {/* --- DESKTOP SIDEBAR (Preserved for Windows/Desktop) --- */}
       <aside className={`fixed top-0 left-0 h-full glass border-r border-white/10 transition-all duration-300 z-50 hidden lg:flex flex-col ${collapsed ? 'w-20' : 'w-64'}`}>
         <div className="p-6 flex items-center justify-between">
           {!collapsed && (
@@ -111,11 +108,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onPageChange, onAuthRequi
             >
               <item.icon className={`w-5 h-5 transition-colors ${activePage === item.id ? 'text-blue-400' : 'group-hover:text-blue-400'}`} />
               {!collapsed && <span className="font-medium text-sm">{item.label}</span>}
-              {collapsed && (
-                <div className="absolute left-full ml-4 px-2 py-1 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 border border-white/10 font-bold uppercase tracking-widest">
-                  {item.label}
-                </div>
-              )}
             </button>
           ))}
 
@@ -146,7 +138,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onPageChange, onAuthRequi
               {!collapsed ? <><LogIn className="w-4 h-4" /> Sign In</> : <LogIn className="w-5 h-5" />}
             </button>
           ) : (
-            !collapsed && (
+            !collapsed ? (
               <button 
                 onClick={() => handleNav('profile')}
                 className={`w-full bg-white/5 hover:bg-white/10 rounded-2xl p-4 mb-4 border transition-all text-left group ${activePage === 'profile' ? 'border-purple-500/50 bg-white/10' : 'border-white/5'}`}
@@ -155,13 +147,20 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onPageChange, onAuthRequi
                   <img src={profile.avatar} alt="Profile" className="w-10 h-10 rounded-full border-2 border-purple-500/30 group-hover:border-purple-500 transition-colors object-cover" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold truncate text-slate-100">{profile.name}</p>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase">{profile.plan}</p>
+                    <div className="flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3 text-emerald-500" />
+                      <p className="text-[10px] text-slate-500 font-bold uppercase">{profile.plan}</p>
+                    </div>
                   </div>
                 </div>
                 <div className="w-full bg-slate-800 rounded-full h-1 overflow-hidden">
                   <div className="bg-gradient-to-r from-purple-500 to-blue-500 h-1 rounded-full w-3/4 transition-all duration-1000"></div>
                 </div>
               </button>
+            ) : (
+               <button onClick={() => handleNav('profile')} className="w-10 h-10 mx-auto rounded-full border-2 border-purple-500/30 mb-4 overflow-hidden">
+                  <img src={profile.avatar} className="w-full h-full object-cover" alt="User" />
+               </button>
             )
           )}
           
@@ -174,7 +173,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onPageChange, onAuthRequi
         </div>
       </aside>
 
-      {/* --- MOBILE TOP NAVIGATION (Scroll-aware Show/Hide) --- */}
       <nav className={`fixed top-0 left-0 w-full h-16 bg-slate-950/80 backdrop-blur-2xl border-b border-white/10 flex lg:hidden items-center justify-around px-4 z-[100] transition-all duration-500 ease-in-out transform ${
         isVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
       }`}>
@@ -185,7 +183,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onPageChange, onAuthRequi
           <span className="font-black text-[10px] tracking-tighter uppercase text-white hidden xs:block">InstaFlow</span>
         </div>
 
-        {/* Center Navigation - Now with 4 Icons */}
         <div className="flex items-center gap-4 sm:gap-6">
           <button onClick={() => handleNav('dashboard')} className={`p-2 transition-colors ${activePage === 'dashboard' ? 'text-blue-400' : 'text-slate-500'}`}>
             <LayoutDashboard className="w-5 h-5" />
@@ -206,7 +203,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onPageChange, onAuthRequi
         </button>
       </nav>
 
-      {/* Mobile Drawer Overlay */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-[200] lg:hidden animate-fade-in">
           <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-md" onClick={() => setMobileMenuOpen(false)}></div>
@@ -241,28 +237,14 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onPageChange, onAuthRequi
                   <span className="text-xs font-bold leading-tight">{item.label}</span>
                 </button>
               ))}
-              <button
-                onClick={() => handleNav('profile')}
-                className="flex items-center gap-4 p-5 rounded-[1.5rem] bg-white/5 border border-white/5 text-slate-400"
-              >
-                <User className="w-5 h-5 shrink-0" />
-                <span className="text-xs font-bold leading-tight">Your Profile</span>
-              </button>
-              <button
-                onClick={() => handleNav('analytics')}
-                className="flex items-center gap-4 p-5 rounded-[1.5rem] bg-white/5 border border-white/5 text-slate-400"
-              >
-                <BarChart3 className="w-5 h-5 shrink-0" />
-                <span className="text-xs font-bold leading-tight">Analytics</span>
-              </button>
             </div>
 
             {!session ? (
                <button 
                 onClick={() => { onAuthRequired(); setMobileMenuOpen(false); }}
-                className="w-full bg-blue-600 py-5 rounded-2xl font-bold text-white shadow-xl shadow-blue-600/20 active:scale-95 transition-transform"
+                className="w-full bg-blue-600 py-5 rounded-2xl font-bold text-white shadow-xl shadow-blue-600/20 active:scale-95 transition-transform flex items-center justify-center gap-2"
                >
-                 Sign In to InstaFlow
+                 <LogIn className="w-5 h-5" /> Sign In to Platform
                </button>
             ) : (
               <button 

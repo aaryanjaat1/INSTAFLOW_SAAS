@@ -7,267 +7,250 @@ import {
   CheckCircle2, 
   AlertCircle, 
   ExternalLink,
-  Code,
-  Shield,
-  Activity,
-  Wifi,
-  WifiOff,
-  Clock
+  Code, 
+  Shield, 
+  Activity, 
+  Save, 
+  Link2, 
+  Terminal, 
+  Database, 
+  Key, 
+  FileCode, 
+  ArrowRight, 
+  Zap, 
+  Info,
+  Loader2,
+  SendHorizontal,
+  ShieldCheck,
+  Cpu
 } from 'lucide-react';
+import { supabase } from '../services/supabase';
 
 interface WebhooksProps {
   onActionInProgress: () => void;
+  session: any;
 }
 
-type ConnectionStatus = 'connected' | 'pending' | 'error';
+const Webhooks: React.FC<WebhooksProps> = ({ onActionInProgress, session }) => {
+  const [inboundUrl] = useState(`${window.location.origin}/api/v1/meta-callback`);
+  const [outboundUrl, setOutboundUrl] = useState('');
+  const [apiKey, setApiKey] = useState('if_live_sk_' + Math.random().toString(36).substring(2, 15));
+  const [isSaving, setIsSaving] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<'none' | 'success' | 'fail'>('none');
 
-const Webhooks: React.FC<WebhooksProps> = ({ onActionInProgress }) => {
-  const [webhookUrl] = useState('https://n8n.your-instaflow-backend.com/webhook/main-inbound');
-  const [secret] = useState('whsec_5f8d9e2a1b3c4d5e6f7g8h9i0j');
-  const [copied, setCopied] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connected');
-
-  // Simulated status monitoring
   useEffect(() => {
-    const statuses: ConnectionStatus[] = ['connected', 'pending', 'error'];
-    const interval = setInterval(() => {
-      // Randomly fluctuate status for demo purposes, but mostly stay connected
-      const rand = Math.random();
-      if (rand > 0.95) {
-        setConnectionStatus('error');
-      } else if (rand > 0.85) {
-        setConnectionStatus('pending');
-      } else {
-        setConnectionStatus('connected');
-      }
-    }, 15000);
+    if (session) {
+      fetchConfig();
+    }
+  }, [session]);
 
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(webhookUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const fetchConfig = async () => {
+    const { data } = await supabase.from('profiles').select('n8n_url, api_key').eq('id', session.user.id).single();
+    if (data?.n8n_url) setOutboundUrl(data.n8n_url);
+    if (data?.api_key) setApiKey(data.api_key);
   };
 
-  const logs = [
-    { id: '1', event: 'instagram.comment', status: 200, time: '2m ago', latency: '124ms' },
-    { id: '2', event: 'instagram.message', status: 200, time: '15m ago', latency: '142ms' },
-    { id: '3', event: 'instagram.story_reply', status: 400, time: '1h ago', latency: '89ms' },
-    { id: '4', event: 'instagram.message', status: 200, time: '2h ago', latency: '156ms' },
-    { id: '5', event: 'instagram.comment', status: 200, time: '4h ago', latency: '131ms' },
-  ];
+  const handleSaveOutbound = async () => {
+    if (!session) return;
+    setIsSaving(true);
+    const { error } = await supabase.from('profiles').update({ 
+      n8n_url: outboundUrl,
+      api_key: apiKey 
+    }).eq('id', session.user.id);
+    
+    if (!error) {
+      onActionInProgress();
+      setTestResult('success');
+      setTimeout(() => setTestResult('none'), 3000);
+    }
+    setIsSaving(false);
+  };
 
-  const getStatusIndicator = () => {
-    switch (connectionStatus) {
-      case 'connected':
-        return (
-          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-widest animate-fade-in" aria-live="polite">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            Connected
-          </div>
-        );
-      case 'pending':
-        return (
-          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-black uppercase tracking-widest animate-fade-in" aria-live="polite">
-            <span className="relative flex h-2 w-2">
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500 animate-pulse"></span>
-            </span>
-            Pending
-          </div>
-        );
-      case 'error':
-        return (
-          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-500 text-[10px] font-black uppercase tracking-widest animate-fade-in" aria-live="polite">
-            <span className="relative flex h-2 w-2">
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-            </span>
-            Error
-          </div>
-        );
+  const handleTestConnection = async () => {
+    if (!outboundUrl) return;
+    setIsTesting(true);
+    setTestResult('none');
+    
+    try {
+      // Simulate n8n 'Webhook Trigger' handshake
+      const response = await fetch(outboundUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'HANDSHAKE_TEST', timestamp: Date.now() })
+      });
+      
+      setTestResult(response.ok ? 'success' : 'fail');
+    } catch (e) {
+      setTestResult('fail');
+    } finally {
+      setIsTesting(false);
     }
   };
 
+  const handleCopy = (text: string, field: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
+
   return (
-    <div className="space-y-8 animate-fade-in max-w-5xl mx-auto pb-12">
-      <div className="flex items-center justify-between">
+    <div className="space-y-10 animate-fade-in max-w-6xl mx-auto pb-32">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-bold mb-2">Webhooks & Backend</h1>
-          <p className="text-slate-400">Configure how InstaFlow communicates with your n8n instance.</p>
+          <h1 className="text-4xl font-black tracking-tight mb-2">Workflow Bridge</h1>
+          <p className="text-slate-400">Synchronize your n8n safety gates and anti-ban parameters.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => { setConnectionStatus('pending'); setTimeout(() => setConnectionStatus('connected'), 2000); }}
-            className="text-xs font-bold text-slate-500 hover:text-white flex items-center gap-2 transition-colors px-4 py-2 rounded-xl bg-white/5 border border-white/5"
-          >
-            <RefreshCw className={`w-3 h-3 ${connectionStatus === 'pending' ? 'animate-spin' : ''}`} />
-            Check Connection
-          </button>
+           <div className={`px-4 py-2 rounded-2xl border flex items-center gap-2 transition-all ${testResult === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-slate-900 border-white/5 text-slate-500'}`}>
+              <ShieldCheck className="w-4 h-4" />
+              <span className="text-[10px] font-black uppercase tracking-widest">
+                {testResult === 'success' ? 'Handshake Verified' : 'System Ready'}
+              </span>
+           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Configuration */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="glass rounded-3xl p-8 space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                  <Webhook className="w-5 h-5 text-blue-400" />
-                </div>
-                <h2 className="text-xl font-bold">Main Inbound Webhook</h2>
-              </div>
-              {getStatusIndicator()}
-            </div>
-            
-            <p className="text-sm text-slate-400">
-              Provide this URL to n8n as your primary Webhook Trigger endpoint. All Instagram events for your connected accounts will be forwarded here.
-            </p>
+        {/* Keys */}
+        <section className="lg:col-span-1 glass rounded-[2.5rem] p-8 border border-white/10 space-y-6">
+          <div className="flex items-center gap-3">
+             <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                <Key className="w-6 h-6" />
+             </div>
+             <h2 className="text-xl font-bold">API Authentication</h2>
+          </div>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Used by n8n <strong>HTTP Request</strong> nodes to securely post analytics back to this dashboard.
+          </p>
+          
+          <div className="space-y-4">
+             <div className="relative group">
+                <input 
+                  type="password" 
+                  readOnly 
+                  value={apiKey}
+                  className="w-full bg-slate-900 border border-white/10 rounded-2xl py-4 pl-4 pr-12 text-xs font-mono text-amber-400 outline-none"
+                />
+                <button onClick={() => handleCopy(apiKey, 'key')} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors">
+                  {copiedField === 'key' ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                </button>
+             </div>
+             <button onClick={() => setApiKey('if_live_sk_' + Math.random().toString(36).substring(2, 20))} className="text-[10px] font-black uppercase text-blue-400 tracking-widest hover:text-white transition-colors flex items-center gap-2">
+                <RefreshCw className="w-3 h-3" /> Rotate Credentials
+             </button>
+          </div>
+        </section>
 
-            <div className="space-y-4">
-              <div className="relative group">
-                <div className="absolute inset-0 bg-blue-500/5 blur-xl group-focus-within:bg-blue-500/10 transition-all rounded-full"></div>
-                <div className="relative flex items-center">
-                  <input 
-                    type="text" 
-                    readOnly 
-                    value={webhookUrl}
-                    aria-label="Webhook URL"
-                    className="w-full bg-slate-900/80 border border-white/10 rounded-2xl py-4 pl-4 pr-12 text-sm font-mono text-blue-300 focus:outline-none"
-                  />
-                  <div className="absolute right-4 flex items-center gap-2">
-                    <button 
-                      onClick={handleCopy}
-                      aria-label="Copy Webhook URL"
-                      className="text-slate-500 hover:text-white transition-colors p-1"
-                    >
-                      {copied ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <Copy className="w-5 h-5" />}
+        {/* Bridge */}
+        <section className="lg:col-span-2 glass rounded-[2.5rem] p-8 border border-white/10 space-y-8 relative overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-6">
+               <div className="flex items-center gap-3 text-blue-400">
+                  <Link2 className="w-5 h-5" />
+                  <h3 className="font-bold text-white uppercase tracking-tighter text-sm">Dashboard Endpoint</h3>
+               </div>
+               <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Inbound URL</label>
+                  <div className="relative">
+                    <input readOnly value={inboundUrl} className="w-full bg-slate-950/80 border border-white/5 rounded-xl py-3 px-4 text-xs font-mono text-blue-300 outline-none" />
+                    <button onClick={() => handleCopy(inboundUrl, 'in')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
+                      {copiedField === 'in' ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                     </button>
                   </div>
-                </div>
-              </div>
+               </div>
             </div>
 
-            <div className="pt-4 border-t border-white/5 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-slate-500" />
-                  <span className="text-sm font-bold text-slate-300">Signing Secret</span>
-                </div>
-                <button onClick={onActionInProgress} className="text-xs text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1">
-                  <RefreshCw className="w-3 h-3" /> Rotate Secret
-                </button>
-              </div>
-              <div className="bg-slate-800/50 p-3 rounded-xl border border-white/5 font-mono text-xs text-slate-500 blur-[2px] hover:blur-none transition-all cursor-pointer">
-                {secret}
-              </div>
-              <p className="text-[10px] text-slate-500 italic">Verify webhook authenticity in n8n using this secret to prevent unauthorized requests.</p>
+            <div className="space-y-6">
+               <div className="flex items-center gap-3 text-purple-400">
+                  <Webhook className="w-5 h-5" />
+                  <h3 className="font-bold text-white uppercase tracking-tighter text-sm">n8n Trigger</h3>
+               </div>
+               <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Production Webhook</label>
+                  <input 
+                    type="url" 
+                    value={outboundUrl}
+                    onChange={(e) => setOutboundUrl(e.target.value)}
+                    placeholder="Paste n8n Webhook Trigger URL here..."
+                    className="w-full bg-slate-900 border border-white/10 rounded-xl py-3 px-4 text-xs font-mono text-purple-300 outline-none focus:border-purple-500/50 transition-all" 
+                  />
+               </div>
             </div>
           </div>
 
-          <div className="glass rounded-3xl overflow-hidden border border-white/5">
-            <div className="p-6 border-b border-white/5 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-purple-400" />
-                <h3 className="font-bold">Recent Deliveries</h3>
-              </div>
-              <button onClick={onActionInProgress} className="text-xs text-slate-400 hover:text-white transition-colors">Clear Logs</button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-white/5 text-slate-400 text-xs font-bold uppercase tracking-wider">
-                  <tr>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4">Event</th>
-                    <th className="px-6 py-4">Latency</th>
-                    <th className="px-6 py-4">Time</th>
-                    <th className="px-6 py-4"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-white/5 transition-colors group">
-                      <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${
-                          log.status === 200 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-500'
-                        }`}>
-                          {log.status} {log.status === 200 ? 'OK' : 'ERR'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 font-mono text-xs text-slate-300">{log.event}</td>
-                      <td className="px-6 py-4 text-slate-500">{log.latency}</td>
-                      <td className="px-6 py-4 text-slate-500">{log.time}</td>
-                      <td className="px-6 py-4 text-right">
-                        <button onClick={onActionInProgress} className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-400 hover:text-blue-300">
-                          <RefreshCw className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        {/* Side Info */}
-        <div className="space-y-6">
-          <div className="glass rounded-3xl p-8 bg-gradient-to-br from-indigo-600/10 to-transparent">
-            <div className="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center mb-6">
-              <Code className="w-6 h-6 text-indigo-400" />
-            </div>
-            <h3 className="text-lg font-bold mb-3">n8n Node Template</h3>
-            <p className="text-xs text-slate-400 leading-relaxed mb-6">
-              We've created a custom n8n workflow template to help you get started with InstaFlow in seconds.
-            </p>
-            <button onClick={onActionInProgress} className="w-full bg-slate-800 hover:bg-slate-700 py-3 rounded-2xl text-sm font-bold transition-all flex items-center justify-center gap-2">
-              Import Template <ExternalLink className="w-4 h-4" />
+          <div className="flex gap-4">
+            <button 
+              onClick={handleSaveOutbound}
+              disabled={isSaving}
+              className="flex-1 bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-2xl shadow-blue-600/20 flex items-center justify-center gap-3 active:scale-[0.98] disabled:opacity-50"
+            >
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Synchronize Configuration
+            </button>
+            <button 
+              onClick={handleTestConnection}
+              disabled={isTesting || !outboundUrl}
+              className={`px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-3 transition-all active:scale-95 border ${testResult === 'fail' ? 'border-rose-500 text-rose-500' : 'border-white/10 text-slate-300 hover:bg-white/5'}`}
+            >
+              {isTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <SendHorizontal className="w-4 h-4" />}
+              Ping n8n Node
             </button>
           </div>
-
-          <div className="glass rounded-3xl p-8 space-y-4">
-            <h4 className="font-bold text-sm uppercase tracking-wider text-slate-500">Backend Health</h4>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-400">API Latency</span>
-                <span className="text-xs font-black text-emerald-400">Optimal</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-400">Delivery Rate</span>
-                <span className="text-xs font-black text-blue-400">99.8%</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-400">Memory Usage</span>
-                <span className="text-xs font-black text-slate-300">12%</span>
-              </div>
-            </div>
-            <div className="pt-4 border-t border-white/5">
-              <h4 className="font-bold text-sm uppercase tracking-wider text-slate-500 mb-3">Integration Checklist</h4>
-              <div className="space-y-3">
-                {[
-                  { label: 'Set Webhook Method to POST', done: true },
-                  { label: 'Enable JSON Parsing', done: true },
-                  { label: 'Add Gemini API Key to n8n', done: false },
-                  { label: 'Configure Error Handling', done: false },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    {item.done ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    ) : (
-                      <div className="w-4 h-4 rounded-full border border-slate-600"></div>
-                    )}
-                    <span className={`text-xs ${item.done ? 'text-slate-300' : 'text-slate-500'}`}>{item.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+        </section>
       </div>
+
+      <section className="glass rounded-[3rem] p-12 border border-white/10 bg-slate-950/40">
+         <div className="flex flex-col xl:flex-row gap-12 items-start">
+            <div className="xl:w-1/2 space-y-6">
+               <div className="flex items-center gap-3">
+                  <Cpu className="w-6 h-6 text-blue-400" />
+                  <h2 className="text-2xl font-bold">The n8n Handshake Guide</h2>
+               </div>
+               <p className="text-slate-400 leading-relaxed text-sm">
+                 The <strong>"Send to InstaFlow Inbound API"</strong> node at the end of your workflow must be an <strong>HTTP Request</strong> node configured as follows:
+               </p>
+               
+               <div className="space-y-4 pt-2">
+                  <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 border border-white/5">
+                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 text-xs font-black">GET</div>
+                    <div>
+                      <h4 className="text-xs font-bold text-white mb-1">Payload Requirements</h4>
+                      <p className="text-[10px] text-slate-500 uppercase tracking-widest">Followers, Reach, Engagement Rate, Lead Score</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 border border-white/5">
+                    <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center shrink-0 text-xs font-black">X-KEY</div>
+                    <div>
+                      <h4 className="text-xs font-bold text-white mb-1">Header Authentication</h4>
+                      <p className="text-[10px] text-slate-500 uppercase tracking-widest">Add Header: X-API-KEY with your rotating key</p>
+                    </div>
+                  </div>
+               </div>
+            </div>
+
+            <div className="xl:w-1/2 w-full bg-slate-900/80 rounded-[2rem] border border-white/5 p-8 font-mono text-xs">
+               <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2 text-emerald-400">
+                     <Terminal className="w-4 h-4" />
+                     <span className="text-slate-500 uppercase tracking-widest font-black text-[10px]">n8n JSON Terminal Output</span>
+                  </div>
+               </div>
+               <pre className="text-emerald-400 leading-relaxed overflow-auto">
+{`{
+  "status": "success",
+  "followers": 12450,
+  "reach": 8200,
+  "engagement_rate": "5.4%",
+  "lead_score": 92,
+  "active_rules": 3,
+  "last_node": "SyncComplete"
+}`}
+               </pre>
+            </div>
+         </div>
+      </section>
     </div>
   );
 };

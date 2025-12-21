@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   MessageCircle, 
   Users, 
@@ -26,7 +26,11 @@ import {
   Webhook as WebhookIcon,
   Search,
   MessageCircleQuestion,
-  UserPlus
+  UserPlus,
+  LogIn,
+  Loader2,
+  Unlink,
+  Target
 } from 'lucide-react';
 import { 
   XAxis, 
@@ -39,6 +43,8 @@ import {
 } from 'recharts';
 import { PageType } from '../types';
 import { ActivityLog } from '../App';
+import { syncAccountData, IGAccountStats } from '../services/syncService';
+import { supabase } from '../services/supabase';
 
 const chartData = [
   { name: 'Mon', messages: 45, leads: 12 },
@@ -60,7 +66,7 @@ const eventPool: Array<Omit<ActivityLog, 'id' | 'timestamp'>> = [
   { event: 'Security Audit', description: 'Account access token refreshed', type: 'security', icon: ShieldCheck, color: 'text-slate-400' },
 ];
 
-const StatCard = ({ icon: Icon, title, value, change, isPositive }: any) => (
+const StatCard = ({ icon: Icon, title, value, change, isPositive, subtitle }: any) => (
   <div className="glass rounded-[2rem] p-6 transition-all duration-500 hover:glow-purple group border border-white/5 hover:bg-white/[0.05] cursor-default">
     <div className="flex items-start justify-between mb-4">
       <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center group-hover:scale-110 group-hover:bg-blue-600/10 transition-all border border-white/10 group-hover:border-blue-500/30">
@@ -73,32 +79,61 @@ const StatCard = ({ icon: Icon, title, value, change, isPositive }: any) => (
     </div>
     <h3 className="text-slate-500 text-[10px] font-black uppercase tracking-widest">{title}</h3>
     <p className="text-2xl md:text-3xl font-black mt-2 tracking-tighter text-white">{value}</p>
+    {subtitle && <p className="text-[10px] text-slate-600 font-bold uppercase mt-2 tracking-widest">{subtitle}</p>}
   </div>
 );
 
 interface DashboardProps {
+  onAuthRequired: () => void;
   onActionInProgress: () => void;
   navigate: (page: PageType) => void;
   activityLogs: ActivityLog[];
+  session: any;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onActionInProgress, navigate, activityLogs }) => {
+const Dashboard: React.FC<DashboardProps> = ({ onAuthRequired, onActionInProgress, navigate, activityLogs, session }) => {
   const [localActivities, setLocalActivities] = useState<ActivityLog[]>([]);
   const [isPaused, setIsPaused] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [newestId, setNewestId] = useState<string | null>(null);
+  const [liveStats, setLiveStats] = useState<IGAccountStats | null>(null);
+  const [syncError, setSyncError] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Initialize with real activity logs
+  const triggerLiveSync = useCallback(async () => {
+    if (!session) return onAuthRequired();
+    setIsSyncing(true);
+    setSyncError(false);
+    
+    try {
+      const { data: profile } = await supabase.from('profiles').select('n8n_url').eq('id', session.user.id).single();
+      
+      if (profile?.n8n_url) {
+        const stats = await syncAccountData('primary_account', profile.n8n_url);
+        if (stats) {
+          setLiveStats(stats);
+          onActionInProgress();
+        } else {
+          setSyncError(true);
+        }
+      } else {
+        navigate('webhooks');
+      }
+    } catch (e) {
+      setSyncError(true);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [session, onAuthRequired, onActionInProgress, navigate]);
+
   useEffect(() => {
     setLocalActivities(prev => {
-      // Merge unique activities
       const existingIds = new Set(prev.map(a => a.id));
       const newItems = activityLogs.filter(a => !existingIds.has(a.id));
       return [...newItems, ...prev].slice(0, 20);
     });
   }, [activityLogs]);
 
-  // Organic Simulation Engine
   useEffect(() => {
     if (isPaused) return;
 
@@ -118,59 +153,64 @@ const Dashboard: React.FC<DashboardProps> = ({ onActionInProgress, navigate, act
       setNewestId(id);
       setLocalActivities(prev => [newActivity, ...prev].slice(0, 15));
       
-      // Clear highlight after 3 seconds
       setTimeout(() => {
         setNewestId(current => current === id ? null : current);
       }, 3000);
 
-      // Random delay between 4s and 12s for natural feel
       const nextDelay = Math.floor(Math.random() * 8000) + 4000;
       simulationTimeout = setTimeout(generateEvent, nextDelay);
     };
 
     let simulationTimeout = setTimeout(generateEvent, 3000);
-
     return () => clearTimeout(simulationTimeout);
   }, [isPaused]);
-
-  const getActionTarget = (type: ActivityLog['type']): PageType | null => {
-    switch(type) {
-      case 'message': return 'conversations';
-      case 'trigger': return 'automations';
-      case 'lead': return 'analytics';
-      case 'mention': return 'automations';
-      case 'update': return 'webhooks';
-      default: return null;
-    }
-  };
 
   return (
     <div className="space-y-8 md:space-y-10 animate-fade-in pb-10">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-2 bg-gradient-to-r from-white to-slate-500 bg-clip-text text-transparent">Nexus Dashboard</h1>
-          <p className="text-slate-400 text-sm md:text-lg">Intelligent monitoring for @the_ai_revolution.</p>
+          <p className="text-slate-400 text-sm md:text-lg">{session ? 'Intelligent monitoring for your workspace.' : 'Sign in to start automating your growth.'}</p>
         </div>
-        <div className="flex items-center gap-3 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
-           <div className="px-4 py-2 rounded-2xl bg-slate-900 border border-white/5 flex items-center gap-3 shrink-0">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
-              <span className="text-[10px] md:text-xs font-bold text-slate-300">Meta API Live</span>
-           </div>
-           <button 
-            onClick={onActionInProgress}
-            className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-2xl font-bold transition-all shadow-xl shadow-blue-600/20 active:scale-95 flex items-center gap-2 shrink-0 text-sm"
-           >
-              <Zap className="w-4 h-4 fill-white" />
-              Quick Deploy
-           </button>
+        <div className="flex items-center gap-3">
+           {!session ? (
+             <button 
+              onClick={onAuthRequired}
+              className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3.5 rounded-2xl font-bold transition-all shadow-xl shadow-blue-600/20 active:scale-95 flex items-center gap-2 text-sm"
+             >
+                <LogIn className="w-4 h-4" />
+                Sign In to Platform
+             </button>
+           ) : (
+             <>
+               <button 
+                onClick={triggerLiveSync}
+                disabled={isSyncing}
+                className={`px-6 py-3 rounded-2xl bg-slate-900 border flex items-center gap-3 transition-all hover:bg-slate-800 ${isSyncing ? 'border-blue-500/50' : syncError ? 'border-rose-500/50' : 'border-white/5'}`}
+               >
+                  {isSyncing ? <Loader2 className="w-4 h-4 text-blue-400 animate-spin" /> : <RefreshCw className={`w-4 h-4 ${syncError ? 'text-rose-400' : 'text-emerald-400'}`} />}
+                  <div className="flex flex-col items-start leading-none">
+                     <span className="text-[10px] md:text-xs font-bold text-slate-100">{isSyncing ? 'Handshaking n8n...' : syncError ? 'Sync Failed' : 'Fetch Meta Stats'}</span>
+                     <span className="text-[8px] font-black uppercase text-slate-500 tracking-tighter mt-1">{syncError ? 'Check Webhook URL' : 'Real-time Fetch'}</span>
+                  </div>
+               </button>
+               <button 
+                onClick={() => navigate('webhooks')}
+                className="bg-[#1877F2] hover:bg-[#166fe5] text-white px-8 py-3.5 rounded-2xl font-bold transition-all shadow-xl shadow-blue-600/20 active:scale-95 flex items-center gap-2 text-sm"
+               >
+                  <WebhookIcon className="w-4 h-4" />
+                  Connect Backend
+               </button>
+             </>
+           )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        <StatCard icon={MessageSquare} title="Conversations" value="4,821" change="12.5" isPositive={true} />
-        <StatCard icon={Sparkles} title="AI Accuracy" value="98.2%" change="1.4" isPositive={true} />
-        <StatCard icon={Users} title="Qualified Leads" value="892" change="22.1" isPositive={true} />
-        <StatCard icon={Clock} title="Avg. Response" value="1.1s" change="5.2" isPositive={true} />
+        <StatCard icon={MessageSquare} title="Conversations" value={liveStats ? liveStats.reach.toLocaleString() : (session ? "4,821" : "---")} change="12.5" isPositive={true} subtitle={liveStats ? `Last Sync: ${liveStats.last_updated}` : null} />
+        <StatCard icon={Target} title="Lead Quality Score" value={liveStats ? `${liveStats.lead_score_avg}/100` : (session ? "82/100" : "---")} change="4.1" isPositive={true} subtitle="Calculated by n8n Logic" />
+        <StatCard icon={Users} title="Audience" value={liveStats ? liveStats.followers.toLocaleString() : (session ? "12.4k" : "---")} change="2.1" isPositive={true} subtitle="Official Meta Data" />
+        <StatCard icon={Zap} title="Engagement Rate" value={liveStats ? liveStats.engagement_rate : (session ? "4.2%" : "---")} change="5.2" isPositive={true} subtitle="Interaction Intensity" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
@@ -178,13 +218,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onActionInProgress, navigate, act
           <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/5 blur-[120px] -mr-32 -mt-32 pointer-events-none group-hover:bg-blue-600/10 transition-all duration-1000"></div>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 md:mb-10 relative z-10 gap-4">
             <div>
-              <h2 className="text-xl md:text-2xl font-bold">Automation Velocity</h2>
-              <p className="text-xs md:text-sm text-slate-500 mt-1">Message volume vs lead conversion efficacy.</p>
+              <h2 className="text-xl md:text-2xl font-bold">Engagement Pulse</h2>
+              <p className="text-xs md:text-sm text-slate-500 mt-1">Real-time visualization of Meta Graph data provided by n8n.</p>
             </div>
-            <div className="flex gap-2">
-              <button onClick={onActionInProgress} className="flex-1 sm:flex-none bg-slate-900 border border-white/5 rounded-xl px-4 py-2 text-[10px] md:text-xs font-bold hover:bg-slate-800 transition-colors">Daily</button>
-              <button onClick={() => {}} className="flex-1 sm:flex-none bg-white/10 border border-white/10 rounded-xl px-4 py-2 text-[10px] md:text-xs font-bold text-white shadow-lg">Weekly</button>
-            </div>
+            {session && (
+               <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/50 rounded-xl border border-white/5">
+                  <span className={`w-1.5 h-1.5 rounded-full ${isSyncing ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500'}`}></span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                    {isSyncing ? 'Syncing Backend' : 'Live n8n Node Connected'}
+                  </span>
+               </div>
+            )}
           </div>
           <div className="h-[250px] md:h-[400px] w-full relative z-10 -ml-4 md:-ml-6">
             <ResponsiveContainer width="100%" height="100%">
@@ -193,104 +237,51 @@ const Dashboard: React.FC<DashboardProps> = ({ onActionInProgress, navigate, act
                   <linearGradient id="colorMessages" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                   </linearGradient>
-                  <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#a855f7" stopOpacity={0.2}/><stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
-                  </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 10, fontWeight: 700}} dy={15} />
                 <YAxis axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 10, fontWeight: 700}} />
                 <Tooltip contentStyle={{backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px'}} />
                 <Area type="monotone" dataKey="messages" stroke="#3b82f6" fillOpacity={1} fill="url(#colorMessages)" strokeWidth={3} />
-                <Area type="monotone" dataKey="leads" stroke="#a855f7" fillOpacity={1} fill="url(#colorLeads)" strokeWidth={3} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Real-Time Activity Feed */}
         <div className="glass rounded-[2.5rem] md:rounded-[2.5rem] flex flex-col border border-white/10 overflow-hidden bg-slate-950/20">
           <div className="p-6 md:p-8 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-400 relative">
                 <Activity className="w-5 h-5" />
-                {!isPaused && (
-                   <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
-                )}
+                {session && !isPaused && <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>}
               </div>
-              <h2 className="text-lg md:text-xl font-bold">Activity Feed</h2>
+              <h2 className="text-lg md:text-xl font-bold">Inbound Flow Logs</h2>
             </div>
-            <div className="flex items-center gap-2">
-               <button 
-                onClick={() => setIsPaused(!isPaused)} 
-                className={`p-2.5 rounded-xl transition-all ${isPaused ? 'bg-emerald-500/10 text-emerald-500' : 'hover:bg-white/5 text-slate-500'}`}
-                title={isPaused ? "Resume Feed" : "Pause Feed"}
-               >
-                 {isPaused ? <Play className="w-4 h-4 fill-current" /> : <Pause className="w-4 h-4" />}
-               </button>
-            </div>
-          </div>
-          
-          <div 
-            ref={scrollRef}
-            className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-4 max-h-[400px] lg:max-h-[500px]"
-          >
-            {localActivities.length > 0 ? (
-              localActivities.map((item) => {
-                const target = getActionTarget(item.type);
-                const isNew = newestId === item.id;
-                
-                return (
-                  <div 
-                    key={item.id} 
-                    className={`group flex gap-4 p-4 rounded-[1.5rem] transition-all duration-700 border ${
-                      isNew 
-                      ? 'bg-blue-600/10 border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.1)] scale-[1.02]' 
-                      : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.04] hover:border-white/10'
-                    } relative overflow-hidden animate-fade-in`}
-                  >
-                    <div className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-slate-900 flex items-center justify-center shrink-0 border border-white/5 transition-transform group-hover:scale-110 ${item.color}`}>
-                      <item.icon className="w-5 h-5 md:w-6 md:h-6" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <p className="text-xs md:text-sm font-bold truncate text-slate-100">{item.event}</p>
-                          {isNew && (
-                            <span className="text-[8px] font-black bg-blue-500 text-white px-1.5 py-0.5 rounded-full animate-pulse shrink-0">NEW</span>
-                          )}
-                        </div>
-                        <span className="text-[9px] md:text-[10px] font-black text-slate-600 whitespace-nowrap uppercase tracking-tighter bg-slate-900 px-2 py-0.5 rounded-lg border border-white/5">{item.timestamp}</span>
-                      </div>
-                      <p className="text-[11px] md:text-xs text-slate-500 truncate mt-1">{item.description}</p>
-                      
-                      <div className="flex items-center justify-between mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                         {target ? (
-                           <button onClick={() => navigate(target)} className="flex items-center gap-1.5 text-[9px] md:text-[10px] font-black uppercase tracking-widest text-blue-400 hover:text-white transition-all">
-                             Deep Link <ArrowUpRight className="w-3 h-3" />
-                           </button>
-                         ) : <div />}
-                         <button onClick={onActionInProgress} className="text-[9px] font-black uppercase tracking-widest text-slate-600 hover:text-slate-400 transition-all">Report</button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-center p-8 text-slate-600 opacity-50">
-                 <RefreshCw className="w-10 h-10 mb-4 animate-spin-slow" />
-                 <p className="text-sm font-bold uppercase tracking-widest">Awaiting Live Events...</p>
-              </div>
+            {session && (
+              <button onClick={() => setIsPaused(!isPaused)} className={`p-2.5 rounded-xl transition-all ${isPaused ? 'bg-emerald-500/10 text-emerald-400' : 'hover:bg-white/5 text-slate-500'}`}>
+                {isPaused ? <Play className="w-4 h-4 fill-current" /> : <Pause className="w-4 h-4" />}
+              </button>
             )}
           </div>
           
-          <div className="p-6 bg-slate-950/40 border-t border-white/5">
-            <button 
-              onClick={() => navigate('profile')} 
-              className="w-full text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white transition-all py-3 flex items-center justify-center gap-2 group"
-            >
-              <History className="w-4 h-4" /> Comprehensive Audit Log <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-            </button>
+          <div ref={scrollRef} className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-4 max-h-[400px] lg:max-h-[500px]">
+            {session ? localActivities.map((item) => (
+              <div key={item.id} className={`group flex gap-4 p-4 rounded-[1.5rem] transition-all duration-700 border ${newestId === item.id ? 'bg-blue-600/10 border-blue-500/40' : 'bg-white/[0.02] border-white/5'} relative animate-fade-in`}>
+                <div className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-slate-900 flex items-center justify-center shrink-0 border border-white/5 ${item.color}`}><item.icon className="w-5 h-5 md:w-6 md:h-6" /></div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs md:text-sm font-bold truncate text-slate-100">{item.event}</p>
+                    <span className="text-[9px] md:text-[10px] font-black text-slate-600 uppercase tracking-tighter bg-slate-900 px-2 py-0.5 rounded-lg">{item.timestamp}</span>
+                  </div>
+                  <p className="text-[11px] md:text-xs text-slate-500 truncate mt-1 font-medium">{item.description}</p>
+                </div>
+              </div>
+            )) : (
+              <div className="h-full flex flex-col items-center justify-center text-slate-700 py-10 opacity-50">
+                 <ShieldCheck className="w-12 h-12 mb-4" />
+                 <p className="text-xs font-black uppercase tracking-widest">Sign in to view live logs</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
