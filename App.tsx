@@ -9,6 +9,7 @@ import InstagramAccounts from './pages/InstagramAccounts';
 import Analytics from './pages/Analytics';
 import Billing from './pages/Billing';
 import Help from './pages/Help';
+import N8nGuide from './pages/N8nGuide';
 import Webhooks from './pages/Webhooks';
 import WorkflowLibrary from './pages/WorkflowLibrary';
 import Settings from './pages/Settings';
@@ -25,6 +26,9 @@ export interface UserProfile {
   avatar: string;
   plan: string;
   timezone: string;
+  tone?: string;
+  brand_voice?: string;
+  creativity?: number;
 }
 
 export interface ActivityLog {
@@ -155,7 +159,7 @@ const App: React.FC = () => {
     };
 
     // Stage 1 Gating: Require Platform Login (Email/Google)
-    const platformAuthRequiredPages: PageType[] = ['conversations', 'automations', 'ai-settings', 'accounts', 'analytics', 'webhooks', 'billing', 'settings'];
+    const platformAuthRequiredPages: PageType[] = ['conversations', 'automations', 'ai-settings', 'accounts', 'analytics', 'webhooks', 'n8n-guide', 'billing', 'settings'];
     if (!session && platformAuthRequiredPages.includes(activePage)) {
       return (
         <div className="flex flex-col items-center justify-center py-32 px-4 text-center animate-fade-in">
@@ -199,10 +203,11 @@ const App: React.FC = () => {
       case 'dashboard': return <Dashboard {...commonProps} />;
       case 'conversations': return <Conversations {...commonProps} />;
       case 'automations': return <Automations {...commonProps} />;
-      case 'ai-settings': return <AIReplySettings />;
+      case 'ai-settings': return <AIReplySettings session={session} onAuthRequired={handleMetaAuth} />;
       case 'accounts': return <InstagramAccounts {...commonProps} />;
       case 'analytics': return <Analytics onActionInProgress={notifyInProgress} />;
       case 'webhooks': return <Webhooks onActionInProgress={notifyInProgress} session={session} />;
+      case 'n8n-guide': return <N8nGuide onActionInProgress={notifyInProgress} session={session} />;
       case 'workflow-library': return <WorkflowLibrary {...commonProps} />;
       case 'settings': return <Settings profile={userProfile} onSave={fetchProfile as any} onActionInProgress={notifyInProgress} session={session} onAuthRequired={handleMetaAuth} activityLogs={activityLogs} />;
       case 'billing': return <Billing {...commonProps} />;

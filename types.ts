@@ -47,4 +47,5 @@ export type PageType =
   | 'settings' 
   | 'billing'
   | 'help'
-  | 'profile';
+  | 'profile'
+  | 'n8n-guide';

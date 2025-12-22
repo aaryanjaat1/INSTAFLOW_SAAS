@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Sparkles, 
   MessageSquare, 
@@ -12,27 +12,72 @@ import {
   HeartHandshake,
   Plus,
   X,
-  Volume2
+  Volume2,
+  Loader2,
+  Save
 } from 'lucide-react';
 import { generateAIReply } from '../services/geminiService';
+import { supabase } from '../services/supabase';
 
-const AIReplySettings: React.FC = () => {
+interface AIReplySettingsProps {
+  session: any;
+  onAuthRequired: () => void;
+}
+
+const AIReplySettings: React.FC<AIReplySettingsProps> = ({ session, onAuthRequired }) => {
   const [tone, setTone] = useState('Friendly');
-  const [brandVoice, setBrandVoice] = useState("We're a friendly tech startup that loves helping businesses grow. Our tone is casual but professional.");
+  const [brandVoice, setBrandVoice] = useState("We're a friendly tech startup that loves helping businesses grow.");
   const [creativity, setCreativity] = useState(70);
   const [responseLength, setResponseLength] = useState(50);
-  
-  const [allowedPhrases, setAllowedPhrases] = useState(['Thanks for reaching out', 'Happy to help', 'Let me know']);
-  const [blockedPhrases, setBlockedPhrases] = useState(['Buy now', 'Limited time', 'Act fast']);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [previewResponse, setPreviewResponse] = useState("Hey there! 👋 Thanks for reaching out! Our pricing starts at $29/month...");
+
+  const [allowedPhrases, setAllowedPhrases] = useState(['Thanks for reaching out', 'Happy to help']);
+  const [blockedPhrases, setBlockedPhrases] = useState(['Buy now', 'Act fast']);
   const [newAllowed, setNewAllowed] = useState('');
   const [newBlocked, setNewBlocked] = useState('');
 
-  const [useEmojis, setUseEmojis] = useState(true);
-  const [addSignature, setAddSignature] = useState(false);
-  const [includeCTA, setIncludeCTA] = useState(true);
+  useEffect(() => {
+    if (session) {
+      fetchSettings();
+    }
+  }, [session]);
 
-  const [previewResponse, setPreviewResponse] = useState("Hey there! 👋 Thanks for reaching out! Our pricing starts at $29/month for the Starter plan, which is perfect for individuals. Our most popular Pro plan is $79/month and includes all features. Would you like me to share more details about what's included?");
-  const [isLoading, setIsLoading] = useState(false);
+  const fetchSettings = async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('tone, brand_voice, creativity, blocked_phrases')
+      .eq('id', session.user.id)
+      .single();
+    
+    if (data && !error) {
+      if (data.tone) setTone(data.tone);
+      if (data.brand_voice) setBrandVoice(data.brand_voice);
+      if (data.creativity) setCreativity(data.creativity);
+      if (data.blocked_phrases) setBlockedPhrases(data.blocked_phrases);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!session) return onAuthRequired();
+    setIsSaving(true);
+    
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        tone,
+        brand_voice: brandVoice,
+        creativity,
+        blocked_phrases: blockedPhrases
+      })
+      .eq('id', session.user.id);
+    
+    if (!error) {
+      alert("Settings saved. Your n8n nodes will now use these updated parameters.");
+    }
+    setIsSaving(false);
+  };
 
   const handleRegenerate = async () => {
     setIsLoading(true);
@@ -72,32 +117,25 @@ const AIReplySettings: React.FC = () => {
     { name: 'Support', icon: HeartHandshake, desc: 'Helpful and empathetic' },
   ];
 
-  const Toggle = ({ enabled, setEnabled, label }: any) => (
-    <div className="flex items-center justify-between py-2">
-      <span className="text-sm font-medium text-slate-200">{label}</span>
-      <button
-        onClick={() => setEnabled(!enabled)}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-          enabled ? 'bg-purple-600' : 'bg-slate-700'
-        }`}
-      >
-        <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-            enabled ? 'translate-x-6' : 'translate-x-1'
-          }`}
-        />
-      </button>
-    </div>
-  );
-
   return (
     <div className="animate-fade-in max-w-7xl mx-auto pb-20">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-black">AI Intelligence Configuration</h1>
+          <p className="text-slate-400">Values here feed your n8n "Map Tone and Strength" node.</p>
+        </div>
+        <button 
+          onClick={handleSave} 
+          disabled={isSaving}
+          className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3.5 rounded-2xl flex items-center gap-3 font-bold shadow-xl shadow-blue-600/20 active:scale-95 disabled:opacity-50 transition-all"
+        >
+          {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+          Sync with n8n
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* Left Column: Settings */}
         <div className="lg:col-span-7 space-y-6">
-          
-          {/* Tone of Voice */}
           <section className="glass rounded-3xl p-6 border border-white/5">
             <div className="flex items-center gap-2 mb-6">
               <Volume2 className="w-5 h-5 text-purple-400" />
@@ -115,18 +153,17 @@ const AIReplySettings: React.FC = () => {
                   }`}
                 >
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-colors ${
-                    tone === t.name ? 'bg-purple-500 text-white' : 'bg-slate-700 text-slate-400 group-hover:text-slate-200'
+                    tone === t.name ? 'bg-purple-500 text-white' : 'bg-slate-700 text-slate-400'
                   }`}>
                     <t.icon className="w-5 h-5" />
                   </div>
                   <span className={`font-bold ${tone === t.name ? 'text-white' : 'text-slate-300'}`}>{t.name}</span>
-                  <span className="text-[10px] text-slate-500 mt-1">{t.desc}</span>
+                  <span className="text-[10px] text-slate-500 mt-1 uppercase tracking-tighter">{t.desc}</span>
                 </button>
               ))}
             </div>
           </section>
 
-          {/* Brand Voice */}
           <section className="glass rounded-3xl p-6 border border-white/5">
             <div className="flex items-center gap-2 mb-4">
               <MessageSquare className="w-5 h-5 text-purple-400" />
@@ -135,101 +172,46 @@ const AIReplySettings: React.FC = () => {
             <textarea
               value={brandVoice}
               onChange={(e) => setBrandVoice(e.target.value)}
-              className="w-full bg-slate-900/60 border border-white/5 rounded-2xl p-4 text-sm text-slate-200 focus:ring-1 focus:ring-purple-500 outline-none min-h-[120px] resize-none"
+              className="w-full bg-slate-900/60 border border-white/5 rounded-2xl p-4 text-sm text-slate-200 outline-none min-h-[120px] resize-none"
               placeholder="Describe your brand voice..."
             />
-            <p className="text-[10px] text-slate-500 mt-3">This helps the AI understand how to communicate as your brand</p>
           </section>
 
-          {/* Response Settings */}
           <section className="glass rounded-3xl p-6 border border-white/5">
             <div className="flex items-center gap-2 mb-8">
               <Sparkles className="w-5 h-5 text-purple-400" />
-              <h2 className="text-xl font-bold">Response Settings</h2>
+              <h2 className="text-xl font-bold">Inference Strength</h2>
             </div>
-            
             <div className="space-y-10">
               <div className="space-y-4">
                 <div className="flex justify-between items-center text-sm">
-                  <span className="font-semibold text-slate-300">Creativity</span>
+                  <span className="font-semibold text-slate-300">Creativity (n8n Prompt Weight)</span>
                   <span className="text-slate-500 font-mono">{creativity}%</span>
                 </div>
                 <input 
-                  type="range" 
-                  min="0" max="100" 
-                  value={creativity}
+                  type="range" min="0" max="100" value={creativity}
                   onChange={(e) => setCreativity(parseInt(e.target.value))}
                   className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
                 />
-                <div className="flex justify-between text-[10px] text-slate-600 uppercase font-bold tracking-widest">
-                  <span>Conservative</span>
-                  <span>Creative</span>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="font-semibold text-slate-300">Response Length</span>
-                  <span className="text-slate-500 font-mono">{responseLength} words avg.</span>
-                </div>
-                <input 
-                  type="range" 
-                  min="10" max="150" 
-                  value={responseLength}
-                  onChange={(e) => setResponseLength(parseInt(e.target.value))}
-                  className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
-                />
-                <div className="flex justify-between text-[10px] text-slate-600 uppercase font-bold tracking-widest">
-                  <span>Short</span>
-                  <span>Long</span>
-                </div>
               </div>
             </div>
           </section>
 
-          {/* Phrase Controls */}
           <section className="glass rounded-3xl p-6 border border-white/5">
             <div className="flex items-center gap-2 mb-6">
               <Shield className="w-5 h-5 text-purple-400" />
               <h2 className="text-xl font-bold">Phrase Controls</h2>
             </div>
-            
             <div className="space-y-6">
               <div className="space-y-3">
-                <label className="text-xs font-bold text-emerald-500 uppercase tracking-widest">Allowed Phrases</label>
+                <label className="text-xs font-bold text-rose-500 uppercase tracking-widest">Blocked Phrases (n8n Safety Check)</label>
                 <div className="flex gap-2">
                   <input 
-                    type="text" 
-                    value={newAllowed}
-                    onChange={(e) => setNewAllowed(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && addPhrase('allowed')}
-                    placeholder="Add allowed phrase..."
-                    className="flex-1 bg-slate-900/60 border border-white/5 rounded-xl px-4 py-2 text-sm focus:ring-1 focus:ring-emerald-500 outline-none"
-                  />
-                  <button onClick={() => addPhrase('allowed')} className="bg-slate-800 hover:bg-slate-700 p-2 rounded-xl transition-colors border border-white/5">
-                    <Plus className="w-5 h-5 text-slate-400" />
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {allowedPhrases.map((p, i) => (
-                    <span key={i} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
-                      {p}
-                      <button onClick={() => removePhrase('allowed', i)}><X className="w-3 h-3" /></button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <label className="text-xs font-bold text-rose-500 uppercase tracking-widest">Blocked Phrases</label>
-                <div className="flex gap-2">
-                  <input 
-                    type="text" 
-                    value={newBlocked}
+                    type="text" value={newBlocked}
                     onChange={(e) => setNewBlocked(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && addPhrase('blocked')}
-                    placeholder="Add blocked phrase..."
-                    className="flex-1 bg-slate-900/60 border border-white/5 rounded-xl px-4 py-2 text-sm focus:ring-1 focus:ring-rose-500 outline-none"
+                    placeholder="Add restricted phrase..."
+                    className="flex-1 bg-slate-900/60 border border-white/5 rounded-xl px-4 py-2 text-sm outline-none"
                   />
                   <button onClick={() => addPhrase('blocked')} className="bg-slate-800 hover:bg-slate-700 p-2 rounded-xl transition-colors border border-white/5">
                     <Plus className="w-5 h-5 text-slate-400" />
@@ -248,13 +230,12 @@ const AIReplySettings: React.FC = () => {
           </section>
         </div>
 
-        {/* Right Column: Preview */}
         <div className="lg:col-span-5 space-y-6">
           <div className="glass rounded-[2.5rem] p-8 border border-white/10 sticky top-8">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-purple-400" />
-                <h2 className="text-xl font-bold">Preview</h2>
+                <h2 className="text-xl font-bold">Live Preview</h2>
               </div>
               <button 
                 onClick={handleRegenerate}
@@ -266,11 +247,10 @@ const AIReplySettings: React.FC = () => {
               </button>
             </div>
 
-            {/* Chat Preview */}
             <div className="space-y-6 mb-10">
               <div className="flex items-start gap-3">
                 <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center shrink-0 border border-white/10">
-                  <span className="text-[10px] text-slate-400">User</span>
+                  <span className="text-[10px] text-slate-400 uppercase font-black">User</span>
                 </div>
                 <div className="bg-slate-800/80 rounded-2xl p-4 text-sm text-slate-200 max-w-[85%] border border-white/5">
                   Hi! I'm interested in your product. How much does it cost?
@@ -279,7 +259,6 @@ const AIReplySettings: React.FC = () => {
 
               <div className="flex items-start gap-3 justify-end">
                 <div className="relative group max-w-[85%]">
-                  <div className="absolute -inset-1 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-2xl blur opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   <div className="relative bg-gradient-to-br from-indigo-600 to-blue-600 rounded-2xl p-4 text-sm text-white shadow-xl shadow-blue-500/10 min-h-[80px]">
                     {isLoading ? (
                       <div className="flex gap-1 h-full items-center justify-center">
@@ -288,44 +267,29 @@ const AIReplySettings: React.FC = () => {
                         <div className="w-1.5 h-1.5 bg-white rounded-full animate-bounce [animation-delay:0.4s]"></div>
                       </div>
                     ) : (
-                      <p className="leading-relaxed">
-                        {previewResponse}
-                      </p>
+                      <p className="leading-relaxed">{previewResponse}</p>
                     )}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Summary List */}
             <div className="bg-slate-900/60 rounded-3xl p-6 border border-white/5 space-y-4 mb-10">
               <div className="flex justify-between text-xs font-bold">
-                <span className="text-slate-500 uppercase tracking-widest">Tone</span>
+                <span className="text-slate-500 uppercase tracking-widest">Active Tone</span>
                 <span className="text-slate-200">{tone}</span>
               </div>
               <div className="flex justify-between text-xs font-bold">
-                <span className="text-slate-500 uppercase tracking-widest">Creativity</span>
+                <span className="text-slate-500 uppercase tracking-widest">AI Strength</span>
                 <span className="text-slate-200">{creativity}%</span>
               </div>
-              <div className="flex justify-between text-xs font-bold">
-                <span className="text-slate-500 uppercase tracking-widest">Target Length</span>
-                <span className="text-slate-200">{responseLength} words</span>
-              </div>
             </div>
 
-            {/* Switches */}
-            <div className="space-y-2 pt-6 border-t border-white/5">
-              <Toggle enabled={useEmojis} setEnabled={setUseEmojis} label="Use Emojis" />
-              <Toggle enabled={addSignature} setEnabled={setAddSignature} label="Add Signature" />
-              <Toggle enabled={includeCTA} setEnabled={setIncludeCTA} label="Include CTA" />
-            </div>
-
-            <button className="w-full mt-8 bg-blue-600 hover:bg-blue-500 py-4 rounded-[2rem] font-bold text-white transition-all shadow-lg shadow-blue-600/20 active:scale-95">
-              Apply Changes
+            <button onClick={handleSave} className="w-full mt-8 bg-blue-600 hover:bg-blue-500 py-4 rounded-[2rem] font-bold text-white transition-all shadow-lg active:scale-95">
+              Sync with Production Workflow
             </button>
           </div>
         </div>
-
       </div>
     </div>
   );

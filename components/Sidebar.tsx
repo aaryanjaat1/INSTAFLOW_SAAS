@@ -19,7 +19,8 @@ import {
   User,
   LogOut,
   ShieldCheck,
-  LogIn
+  LogIn,
+  BookOpen
 } from 'lucide-react';
 import { PageType } from '../types';
 import { UserProfile } from '../App';
@@ -65,6 +66,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onPageChange, onAuthRequi
     { id: 'ai-settings' as PageType, icon: Sparkles, label: 'AI Settings' },
     { id: 'accounts' as PageType, icon: Instagram, label: 'Accounts' },
     { id: 'webhooks' as PageType, icon: Webhook, label: 'n8n Config' },
+    { id: 'n8n-guide' as PageType, icon: BookOpen, label: 'n8n Guide' },
     { id: 'workflow-library' as PageType, icon: Library, label: 'Workflow Library' },
     { id: 'settings' as PageType, icon: Settings, label: 'Settings' },
     { id: 'billing' as PageType, icon: CreditCard, label: 'Billing' },
