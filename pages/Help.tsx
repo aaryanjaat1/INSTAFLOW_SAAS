@@ -95,7 +95,7 @@ const Help: React.FC<HelpProps> = ({ onActionInProgress, onNavigate }) => {
                  <MousePointer2 className="w-4 h-4 text-blue-400" /> 1. Add Valid OAuth Redirect URI
               </h4>
               <p className="text-sm text-slate-300 leading-relaxed">
-                 In your Meta Developer Portal, go to **Facebook Login > Settings** and paste this URL into the **Valid OAuth Redirect URIs** field:
+                 In your Meta Developer Portal, go to **Facebook Login &gt; Settings** and paste this URL into the **Valid OAuth Redirect URIs** field:
               </p>
               <div className="relative group">
                 <input 

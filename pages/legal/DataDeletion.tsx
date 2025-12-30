@@ -30,7 +30,7 @@ const DataDeletion: React.FC = () => {
           <ol className="list-decimal list-inside space-y-3">
             <li>Go to your Facebook Profile Settings & Privacy.</li>
             <li>Click <strong>'Settings'</strong>.</li>
-            <li>Navigate to <strong>'Security and Login'</strong> > <strong>'Apps and Websites'</strong>.</li>
+            <li>Navigate to <strong>'Security and Login'</strong> &gt; <strong>'Apps and Websites'</strong>.</li>
             <li>Find <strong>'InstaFlow'</strong> and click Remove.</li>
           </ol>
         </section>
