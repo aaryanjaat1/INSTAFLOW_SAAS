@@ -14,6 +14,9 @@ import Webhooks from './pages/Webhooks';
 import WorkflowLibrary from './pages/WorkflowLibrary';
 import Settings from './pages/Settings';
 import Profile from './pages/Profile';
+import PrivacyPolicy from './pages/legal/PrivacyPolicy';
+import TermsOfService from './pages/legal/TermsOfService';
+import DataDeletion from './pages/legal/DataDeletion';
 import AuthModal from './components/AuthModal';
 import { PageType } from './types';
 import { supabase, signInWithMeta } from './services/supabase';
@@ -158,6 +161,11 @@ const App: React.FC = () => {
       activityLogs
     };
 
+    // Public Pages (Bypass Gating)
+    if (activePage === 'privacy') return <PrivacyPolicy />;
+    if (activePage === 'terms') return <TermsOfService />;
+    if (activePage === 'data-deletion') return <DataDeletion />;
+
     // Stage 1 Gating: Require Platform Login (Email/Google)
     const platformAuthRequiredPages: PageType[] = ['conversations', 'automations', 'ai-settings', 'accounts', 'analytics', 'webhooks', 'n8n-guide', 'billing', 'settings'];
     if (!session && platformAuthRequiredPages.includes(activePage)) {
@@ -211,7 +219,7 @@ const App: React.FC = () => {
       case 'workflow-library': return <WorkflowLibrary {...commonProps} />;
       case 'settings': return <Settings profile={userProfile} onSave={fetchProfile as any} onActionInProgress={notifyInProgress} session={session} onAuthRequired={handleMetaAuth} activityLogs={activityLogs} />;
       case 'billing': return <Billing {...commonProps} />;
-      case 'help': return <Help onActionInProgress={notifyInProgress} />;
+      case 'help': return <Help onActionInProgress={notifyInProgress} onNavigate={setActivePage} />;
       case 'profile': return <Profile profile={userProfile} onNavigate={setActivePage} onSignOut={() => supabase.auth.signOut()} />;
       default: return <Dashboard {...commonProps} />;
     }
