@@ -10,11 +10,15 @@ export interface IGAccountStats {
   status: 'online' | 'syncing' | 'offline';
 }
 
+/**
+ * Production Note: This should be handled by a Supabase Edge Function 
+ * to securely exchange short-lived tokens for long-lived (60 day) tokens
+ * and subscribe to the page's webhooks.
+ */
 export const syncAccountData = async (accountId: string, n8nWebhookUrl: string): Promise<IGAccountStats | null> => {
   if (!n8nWebhookUrl) return null;
 
   try {
-    // This triggers the 'Webhook Trigger' in your n8n screenshot
     const response = await fetch(n8nWebhookUrl, {
       method: 'POST',
       headers: { 
@@ -30,7 +34,6 @@ export const syncAccountData = async (accountId: string, n8nWebhookUrl: string):
 
     if (!response.ok) throw new Error('n8n endpoint unreachable');
     
-    // This receives the response from the 'Send to InstaFlow Inbound API' node in n8n
     const data = await response.json();
     
     return {

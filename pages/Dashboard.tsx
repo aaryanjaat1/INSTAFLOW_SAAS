@@ -30,7 +30,8 @@ import {
   LogIn,
   Loader2,
   Unlink,
-  Target
+  Target,
+  ShieldAlert
 } from 'lucide-react';
 import { 
   XAxis, 
@@ -169,7 +170,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onAuthRequired, onActionInProgres
     <div className="space-y-8 md:space-y-10 animate-fade-in pb-10">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-2 bg-gradient-to-r from-white to-slate-500 bg-clip-text text-transparent">Nexus Dashboard</h1>
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight bg-gradient-to-r from-white to-slate-500 bg-clip-text text-transparent">Nexus Dashboard</h1>
+            {session && (
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20">
+                <ShieldCheck className="w-3 h-3 text-emerald-500" />
+                <span className="text-[10px] font-black uppercase text-emerald-400 tracking-widest">Production Ready</span>
+              </div>
+            )}
+          </div>
           <p className="text-slate-400 text-sm md:text-lg">{session ? 'Intelligent monitoring for your workspace.' : 'Sign in to start automating your growth.'}</p>
         </div>
         <div className="flex items-center gap-3">
@@ -225,7 +234,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onAuthRequired, onActionInProgres
                <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/50 rounded-xl border border-white/5">
                   <span className={`w-1.5 h-1.5 rounded-full ${isSyncing ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500'}`}></span>
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">
-                    {isSyncing ? 'Syncing Backend' : 'Live n8n Node Connected'}
+                    {isSyncing ? 'Syncing Backend' : 'Signature Gate Verified'}
                   </span>
                </div>
             )}

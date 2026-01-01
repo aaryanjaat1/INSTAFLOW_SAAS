@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Trash2, ShieldAlert } from 'lucide-react';
 
@@ -19,19 +18,19 @@ const DataDeletion: React.FC = () => {
           <h2 className="text-xl font-bold text-white">Method 1: Via InstaFlow Dashboard</h2>
           <ol className="list-decimal list-inside space-y-3">
             <li>Log in to your InstaFlow account.</li>
-            <li>Go to the <strong>'Accounts'</strong> tab.</li>
+            <li>Go to the <strong>&apos;Accounts&apos;</strong> tab.</li>
             <li>Find the Instagram account you wish to remove.</li>
-            <li>Click <strong>'Revoke Access'</strong>. This will delete all stored tokens and metadata related to that account.</li>
+            <li>Click <strong>&apos;Revoke Access&apos;</strong>. This will delete all stored tokens and metadata related to that account.</li>
           </ol>
         </section>
 
         <section className="space-y-6">
           <h2 className="text-xl font-bold text-white">Method 2: Via Facebook Settings</h2>
           <ol className="list-decimal list-inside space-y-3">
-            <li>Go to your Facebook Profile Settings & Privacy.</li>
-            <li>Click <strong>'Settings'</strong>.</li>
-            <li>Navigate to <strong>'Security and Login'</strong> &gt; <strong>'Apps and Websites'</strong>.</li>
-            <li>Find <strong>'InstaFlow'</strong> and click Remove.</li>
+            <li>Go to your Facebook Profile Settings &amp; Privacy.</li>
+            <li>Click <strong>&apos;Settings&apos;</strong>.</li>
+            <li>Navigate to <strong>&apos;Security and Login&apos;</strong> &gt; <strong>&apos;Apps and Websites&apos;</strong>.</li>
+            <li>Find <strong>&apos;InstaFlow&apos;</strong> and click Remove.</li>
           </ol>
         </section>
 
@@ -40,7 +39,7 @@ const DataDeletion: React.FC = () => {
             <ShieldAlert className="w-4 h-4" />
             <h3 className="font-bold">Final Removal</h3>
           </div>
-          <p className="text-xs">If you wish to delete your entire platform profile including your email and activity logs, please contact support@instaflow.ai with the subject "Account Deletion Request".</p>
+          <p className="text-xs">If you wish to delete your entire platform profile including your email and activity logs, please contact support@instaflow.ai with the subject &quot;Account Deletion Request&quot;.</p>
         </div>
       </div>
     </div>
